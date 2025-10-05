@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <link rel="icon" type="image/svg" href="Assets/icon.svg" />
+  <title>Airport Builder</title>
+  <style>
+    :root {
+      --bg: #0b1220;
+      --accent: #29b6f6;
+      --text: #e6eef6;
+      --panel: #111a2b;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: "Inter", system-ui, sans-serif;
+      background-image: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)), url("Assets/IMG_3668.jpeg");
+      background-position: center;
+      background-repeat: no-repeat;
+      background-size: cover;
+      color: var(--text);
+      display: flex;
+      flex-direction: column;
+      min-height: 100vh;
+      align-items: center;
+      justify-content: center;
+      text-align: center;
+      overflow: hidden;
+    }
+
+    header {
+      font-size: 2.4rem;
+      font-weight: 700;
+      color: var(--accent);
+      margin-bottom: 0.5rem;
+    }
+
+    p {
+      font-size: 1.1rem;
+      color: #a7b5c7;
+      max-width: 600px;
+      margin: 0 auto 2rem;
+    }
+
+    .btn {
+      background: var(--accent);
+      color: white;
+      border: none;
+      border-radius: 10px;
+      font-size: 1.1rem;
+      padding: 0.8rem 1.6rem;
+      cursor: pointer;
+      box-shadow: 0 4px 20px rgba(41,182,246,0.25);
+      transition: all 0.25s ease;
+    }
+
+    .btn:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 6px 30px rgba(41,182,246,0.4);
+    }
+
+    footer {
+      position: absolute;
+      bottom: 10px;
+      font-size: 0.9rem;
+      color: #7d8fa5;
+    }
+
+    .skyline {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      width: 100%;
+      height: 160px;
+      background: linear-gradient(to top, #0a101d, transparent);
+      overflow: hidden;
+    }
+  </style>
+</head>
+<body>
+  <header>Airport Builder</header>
+  <p>
+    Design, construct, and visualize your own airport with interactive runways, taxiways, terminals, and aprons.
+    Everything you need to bring your aviation imagination to life — right in your browser.
+  </p>
+  <button class="btn" onclick="window.location.href='v1_0_0.html'">Launch Builder ✈️</button>
+
+  <div class="skyline">
+    <div class="plane"></div>
+  </div>
+
+  <footer>
+    &copy; 2025 Airport Builder Project — Created by IsmailMid
+  </footer>
+</body>
+</html>
