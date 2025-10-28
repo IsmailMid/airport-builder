@@ -1,0 +1,603 @@
+<!-- Version 1.0.1 -- October 25, 2025 -->
+
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<link rel="icon" type="image/svg" href="Assets/icon.svg" />
+<title>Airport Builder — Block-based Interactive Editor</title>
+<style>
+:root{--bg:#0b1220;--panel:#0f1724;--accent:#29b6f6;--muted:#95a5b3;--glass:rgba(255,255,255,0.04)}
+html,body{height:100%;margin:0;font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,'Helvetica Neue',Arial}
+body{background:linear-gradient(180deg,#07101a, #0b1220);color:#e6eef6;display:flex;flex-direction:column}
+.header{display:flex;gap:12px;align-items:center;padding:10px 14px;background:linear-gradient(180deg,rgba(255,255,255,0.02),transparent);box-shadow:0 1px 0 rgba(255,255,255,0.02)}
+.title{font-weight:700;margin-right:6px}
+.toolbar{display:flex;gap:8px;align-items:center}
+.btn{background:var(--panel);border:1px solid rgba(255,255,255,0.03);padding:8px 10px;border-radius:8px;color:var(--muted);cursor:pointer}
+.btn.active{border-color:var(--accent);color:var(--accent);box-shadow:0 4px 16px rgba(41,182,246,0.08)}
+.container{display:flex;flex:1;min-height:0}
+.side{width:320px;background:linear-gradient(180deg,rgba(255,255,255,0.02),transparent);padding:12px;box-sizing:border-box;border-left:1px solid rgba(255,255,255,0.03);overflow:auto}
+.canvas-wrap{flex:1;display:flex;flex-direction:column;padding:12px}
+#canvas{flex:1;border-radius:10px;background:linear-gradient(90deg, rgba(255,255,255,0.01), rgba(255,255,255,0.00));position:relative;overflow:hidden;border:1px solid rgba(255,255,255,0.03)}
+.grid{background-image:linear-gradient(to right, rgba(255,255,255,0.02) 1px, transparent 1px),linear-gradient(to bottom, rgba(255,255,255,0.02) 1px, transparent 1px);background-size:40px 40px,40px 40px;position:absolute;inset:0}
+#canvasInner {transform-origin: 0 0;position: absolute;inset: 0;will-change: transform;}
+.prop-row{display:flex;gap:8px;align-items:center;margin-bottom:8px}
+.label{color:var(--muted);font-size:13px;width:120px}
+.input,select{flex:1;padding:8px;border-radius:8px;border:1px solid rgba(255,255,255,0.03);background:var(--glass);color:inherit}
+.small{width:80px}
+.element{position:absolute;touch-action:none;user-select:none}
+.runway{background:linear-gradient(180deg,#222 0,#191919 100%);border:2px solid rgba(255,255,255,0.06);box-shadow:0 6px 20px rgba(0,0,0,0.6)}
+.runway .markings{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);color:#fff;font-weight:700;letter-spacing:3px;text-align:center;text-shadow:0 2px 6px rgba(0,0,0,0.8)}
+.runway .length-tag{position:absolute;right:-10px;top:-20px;background:rgba(0,0,0,0.6);padding:4px 8px;border-radius:6px;font-size:12px}
+.taxiway{background:linear-gradient(180deg,#775316,#291d07);border:2px solid rgba(255,255,255,0.03)}
+.apron{background:linear-gradient(180deg,#625e5e,#401a1a);border:2px dashed rgba(255,255,255,0.035)}
+.apron-label{pointer-events: none;}
+.terminal{background:linear-gradient(180deg,#3e2f47,#37263b);border:2px solid rgba(255,255,255,0.03)}
+.handle{position:absolute;width:12px;height:12px;border-radius:3px;background:var(--panel);border:2px solid rgba(255,255,255,0.04)}
+.handle.rotate{border-radius:50%;width:14px;height:14px}
+.connector{position:absolute;width:10px;height:10px;border-radius:50%;background:var(--accent);transform:translate(-50%,-50%);opacity:0.9}
+.legend{font-size:13px;color:var(--muted);margin-bottom:6px}
+.footer{padding:8px 12px;color:var(--muted);font-size:13px}
+@media (max-width:880px){.side{width:100%;order:2}.canvas-wrap{order:1}.container{flex-direction:column}.header{flex-wrap:wrap}}
+</style>
+</head>
+<body>
+<div class="header">
+  <div class="title">Airport Builder</div>
+  <div class="toolbar" role="toolbar">
+    <button class="btn" id="addRunway">+ Runway</button>
+    <button class="btn" id="addTaxi">+ Taxiway</button>
+    <button class="btn" id="addApron">+ Apron/Stand</button>
+    <button class="btn" id="addTerminal">+ Terminal</button>
+    <button class="btn" id="undo">Undo</button>
+    <button class="btn" id="reset">Reset</button>
+  </div>
+</div>
+<div class="container">
+  <div class="canvas-wrap">
+    <div id="canvas">
+      <div id="canvasInner">
+        <div class="grid"></div>
+        <svg id="links" style="position:absolute;inset:0;pointer-events:none"></svg>
+      </div>
+    </div>
+    <div class="footer">Tip: Drag pieces on the canvas, use the rotate handle to set heading (runway numbers auto-update). Pinch/drag on mobile supported.</div>
+  </div>
+  <div class="side">
+    <div class="legend">Selected element properties</div>
+    <div id="properties">
+      <div class="prop-row"><div class="label">Type</div><div id="ptype" class="input">None</div></div>
+      <div id="commonProps">
+        <div class="prop-row"><div class="label">X</div><input id="posX" class="input small" type="number"></div>
+        <div class="prop-row"><div class="label">Y</div><input id="posY" class="input small" type="number"></div>
+        <div class="prop-row"><div class="label">Width (m)</div><input id="widthM" class="input small" type="number"></div>
+        <div class="prop-row"><div class="label">Length (m)</div><input id="heightM" class="input small" type="number"></div>
+        <div class="prop-row"><div class="label">Rotation (deg)</div><input id="rot" class="input small" type="number"></div>
+      </div>
+      <div id="runwayProps" style="display:none">
+        <div class="prop-row"><div class="label">Parallel index</div><input id="parallelIndex" class="input small" type="number" min="1" max="3" value="1"></div>
+        <div class="prop-row"><div class="label">Surface</div>
+          <select id="surface" class="input">
+            <option>Asphalt</option>
+            <option>Concrete</option>
+            <option>Grass</option>
+          </select>
+        </div>
+      </div>
+      <div id="apronProps" style="display:none">
+        <div class="prop-row" id="apronNumberRow">
+          <div class="label">Apron number</div>
+          <input id="apronNumber" class="input small" type="text" maxlength="3" />
+        </div>
+        <div class="prop-row"><div class="label">Max aircraft</div>
+          <select id="maxAircraft" class="input">
+            <option>ICAO code A (Cessna 404/Piper PA-31)</option>
+            <option>ICAO code B (Bombardier CRJ200/DHC-6)</option>
+            <option>ICAO code C (Airbus A320/Boeing 737/Embraer E190)</option>
+            <option>ICAO code D (Airbus A310/Boeing 767)</option>
+            <option>ICAO code E (Airbus A330/Boeing 777/Boeing 787)</option>
+            <option>ICAO code F (Airbus A380/Boeing 747)</option>
+          </select>
+          <p><i>Reference: <a href="https://skybrary.aero/articles/icao-aerodrome-reference-code">SKYbrary</a></i></p>
+        </div>
+      </div>
+      <div id="terminalProps" style="display:none">
+        <div class="prop-row"><div class="label">Connects to:</div>
+          <select id="connectsTo" class="input">
+            <option>None</option>
+            <option>Main</option>
+            <option>Departure</option>
+            <option>Arrival</option>
+          </select></div>
+      </div>
+      <div style="margin-top:10px"><button class="btn" id="deleteBtn">Delete Selected</button></div>
+    </div>
+    <hr style="border:none;border-top:1px solid rgba(255,255,255,0.03);margin:12px 0">
+    <div class="legend">Legend & Controls</div>
+    <div style="font-size:13px;color:var(--muted);line-height:1.5">
+      - Runway numbers auto-compute from rotation heading. Opposite ends are both labeled. <br>
+      - Parallel runways get L/C/R depending on how many are aligned within 1 degree and their lateral order. <br>
+      - Lengths show in meters and feet (rounded). <br>
+      - Connectors snap when elements are moved close to each other.
+    </div>
+  </div>
+</div>
+<script>
+// Basic interactive airport builder. Not a CAD app. But it tries hard.
+const canvas = document.getElementById('canvas');
+const linksSVG = document.getElementById('links');
+const canvasInner = document.getElementById('canvasInner');
+let canvasScale = 1;
+let canvasOffset = { x: 0, y: 0 };
+let isPanning = false;
+let lastPan = { x: 0, y: 0 };
+
+function updateCanvasTransform() {
+  canvasInner.style.transform = `translate(${canvasOffset.x}px, ${canvasOffset.y}px) scale(${canvasScale})`;
+}
+let elements = [];
+let selected = null;
+let zIndexCounter = 2;
+let history = [];
+const toPX = (m)=> Math.max(6, m/5); // simple m->px scale (1px = 5m), minimum 6px for 30m
+const fromPX = (px)=> Math.round(px*5);
+
+function createElement(type, x=200,y=120,w=50,h=600){
+  saveState();
+  const el = document.createElement('div');
+  el.className = 'element '+type;
+  el.dataset.type = type;
+  el.style.left = x+'px';
+  el.style.top = y+'px';
+  el.style.width = toPX(w)+'px';
+  el.style.height = toPX(h)+'px';
+  el.style.transformOrigin='50% 50%';
+  el.style.zIndex = ++zIndexCounter;
+  el.style.transform = 'rotate(0deg)';
+  el.innerHTML = renderInner(type, w, h);
+  canvasInner.appendChild(el);
+  addHandles(el);
+  const obj = {id:crypto.randomUUID(),type,x,y,w,h,rot:0,el,connectors:[],meta:{}};
+  if(type==='apron') obj.meta.apronNumber = '01';
+  el.dataset.id = obj.id;
+  elements.push(obj);
+  updateConnectors(obj);
+  selectElement(obj);
+  return obj;
+}
+
+function renderInner(type,w,h){
+  if(type==='runway'){
+    return `<div class="markings" style="font-size:calc(10px + ${Math.max(8,Math.min(36, h/40))}px)"><div class="numA">00</div><div style="font-size:10px;margin-top:6px" class="numB">00</div></div><div class="length-tag"></div>`;
+  }
+  if(type==='taxiway') return '';
+  if(type==='apron') 
+  return '<div class="apron-label" style="position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);font-weight:700;color:#fff;text-shadow:0 1px 3px rgba(0,0,0,0.6);font-size:14px;">01</div>';
+  if(type==='terminal') return '';
+  return '';
+}
+
+function addHandles(el){
+  const id = el.dataset.id;
+  // rotate handle
+  const r = document.createElement('div'); r.className='handle rotate'; r.style.right='-18px'; r.style.top='-18px'; el.appendChild(r);
+  // resize handle bottom-right
+  const rb = document.createElement('div'); rb.className='handle'; rb.style.right='-8px'; rb.style.bottom='-8px'; el.appendChild(rb);
+  // connector point center-right
+  const conn = document.createElement('div'); conn.className='connector'; conn.style.right='0'; conn.style.top='50%'; conn.title='Connector'; el.appendChild(conn);
+
+  makeDraggable(el);
+  makeResizable(rb,el);
+  makeRotatable(r,el);
+  conn.addEventListener('pointerdown', (e)=>{e.stopPropagation(); startConnectorDrag(el,e)});
+}
+
+function makeDraggable(el){
+  el.style.touchAction='none';
+  let startX=0,startY=0,ox=0,oy=0; let dragging=false;
+  el.addEventListener('pointerdown', (e)=>{
+    if(e.target.classList.contains('handle')||e.target.classList.contains('connector')) return;
+    dragging=true; el.setPointerCapture(e.pointerId);
+    startX=e.clientX; startY=e.clientY; ox=parseFloat(el.style.left); oy=parseFloat(el.style.top);
+    el.style.zIndex = ++zIndexCounter;
+    const obj = findByEl(el); selectElement(obj);
+  });
+  window.addEventListener('pointermove',(e)=>{ if(!dragging) return; const dx=e.clientX-startX, dy=e.clientY-startY; el.style.left = ox+dx+'px'; el.style.top = oy+dy+'px'; const obj=findByEl(el); obj.x=parseFloat(el.style.left); obj.y=parseFloat(el.style.top); updateConnectors(obj); renderLinks(); updatePropsPanel(); snapToNearby(obj); });
+  window.addEventListener('pointerup',(e)=>{ if(!dragging) return; dragging=false; try{el.releasePointerCapture(e.pointerId)}catch{}; renderLinks(); });
+}
+
+function makeResizable(handle,el){
+  let startW=0,startH=0, sx=0,sy=0; let resizing=false;
+  handle.addEventListener('pointerdown',(e)=>{e.stopPropagation(); resizing=true; el.setPointerCapture(e.pointerId); startW=el.offsetWidth; startH=el.offsetHeight; sx=e.clientX; sy=e.clientY; const obj=findByEl(el); selectElement(obj);});
+  window.addEventListener('pointermove',(e)=>{
+    if(!resizing) return;
+    const dx = e.clientX - sx, dy = e.clientY - sy;
+    // determine element-specific minimums (px)
+    const obj = findByEl(el);
+    // default legacy minimum in px (was 24px -> 120m). Keep unchanged for non-apron elements.
+    const legacyMinPx = 24;
+    // For aprons: min width 60m, min height 120m
+    const minWidthPx = (obj && obj.type === 'apron') ? toPX(60) : legacyMinPx;
+    const minHeightPx = (obj && obj.type === 'apron') ? toPX(120) : legacyMinPx;
+
+    el.style.width = Math.max(minWidthPx, startW + dx) + 'px';
+    el.style.height = Math.max(minHeightPx, startH + dy) + 'px';
+
+    if (obj) {
+      obj.w = fromPX(parseFloat(el.style.width));
+      obj.h = fromPX(parseFloat(el.style.height));
+      updateInner(el,obj);
+      updateConnectors(obj);
+      renderLinks();
+      updatePropsPanel();
+    }
+  });
+  window.addEventListener('pointerup',(e)=>{ if(!resizing) return; resizing=false; try{handle.releasePointerCapture(e.pointerId)}catch{}; });
+}
+
+function makeRotatable(handle,el){
+  let rotating=false, cx=0, cy=0, startAngle=0;
+  handle.addEventListener('pointerdown',(e)=>{e.stopPropagation(); rotating=true; el.setPointerCapture(e.pointerId);
+    const rect=el.getBoundingClientRect(); cx=rect.left+rect.width/2; cy=rect.top+rect.height/2;
+    startAngle = getRotation(el);
+    selectElement(findByEl(el));
+  });
+  window.addEventListener('pointermove',(e)=>{ if(!rotating) return; const angle = Math.atan2(e.clientY-cy,e.clientX-cx)*180/Math.PI; const deg = angle+90; el.style.transform = `rotate(${deg}deg)`; const obj=findByEl(el); obj.rot = ((deg%360)+360)%360; updateRunwayNumbers(obj); updateConnectors(obj); renderLinks(); updatePropsPanel(); });
+  window.addEventListener('pointerup',(e)=>{ if(!rotating) return; rotating=false; try{handle.releasePointerCapture(e.pointerId)}catch{}; });
+}
+
+function getRotation(el){
+  const st = window.getComputedStyle(el).transform;
+  if(st==='none') return 0;
+  const values = st.split('(')[1].split(')')[0].split(',');
+  const a = parseFloat(values[0]), b=parseFloat(values[1]);
+  const angle = Math.round(Math.atan2(b,a)*180/Math.PI);
+  return angle;
+}
+
+function updateInner(el,obj){
+  if(obj.type==='runway'){
+    // update markings font size and lengths
+    const mm = el.querySelector('.markings');
+    if(mm){
+      mm.style.fontSize = (10 + Math.max(8,Math.min(36, obj.h/40)))+'px';
+    }
+    const tag = el.querySelector('.length-tag'); if(tag) tag.textContent = formatLength(obj.h);
+    updateRunwayNumbers(obj);
+  }
+}
+
+function updateRunwayNumbers(obj){
+  if(obj.type!=='runway') return;
+  const el = obj.el;
+  const heading = Math.round(((obj.rot % 360)+360)%360);
+  const numA = runwayNumberFromHeading(heading);
+  const opp = (heading+180)%360; const numB = runwayNumberFromHeading(Math.round(opp));
+  // show numbers based on rotation direction: we'll put numA at top and numB at bottom
+  const numAel = el.querySelector('.numA'); const numBel = el.querySelector('.numB');
+  if(numAel) numAel.textContent = numA + parallelSuffix(obj, heading, true);
+  if(numBel) numBel.textContent = numB + parallelSuffix(obj, heading, false);
+  const tag = el.querySelector('.length-tag'); if(tag) tag.textContent = formatLength(obj.h);
+}
+
+function runwayNumberFromHeading(h){
+  // round to nearest 10, divide by 10. if 360->36, 0->36
+  let r = Math.round(h/10);
+  if(r===0) r=36; if(r>36) r = r%36; return String(r).padStart(2,'0');
+}
+
+function parallelSuffix(obj, heading, firstEnd) {
+  // Find runways with similar heading (within ±1.5 degrees)
+  const aligned = elements.filter(e => e.type === 'runway' && Math.abs(shortestAngleDiff(e.rot, heading)) < 1.5);
+  if (aligned.length <= 1) return '';
+
+  // Compute lateral order (perpendicular axis)
+  const rad = (heading + 90) * Math.PI / 180;
+  aligned.sort((a, b) => (Math.cos(rad) * (a.x - b.x) + Math.sin(rad) * (a.y - b.y)));
+
+  const idx = aligned.findIndex(x => x.id === obj.id);
+  const labels = aligned.length === 2 ? ['L', 'R'] :
+                 aligned.length === 3 ? ['L', 'C', 'R'] : [];
+
+  if (!labels.length) return '';
+
+  // For the opposite end, flip L/R; C stays the same
+  const label = labels[idx] || '';
+  if (!firstEnd) {
+    if (label === 'L') return 'R';
+    if (label === 'R') return 'L';
+  }
+  return label;
+}
+
+function shortestAngleDiff(a,b){ let diff = (a-b+540)%360-180; return diff; }
+
+function formatLength(m){ const mRounded = Math.round(m); const ft = Math.round(mRounded*3.28084); return `${mRounded.toLocaleString()}m / ${ft.toLocaleString()}ft`; }
+
+function updateConnectors(obj) {
+  const el = obj.el;
+  const existing = el.querySelectorAll('.connector');
+  existing.forEach(c => c.remove());
+
+  const positions = [
+    { name: 'left', x: '0%', y: '50%' },
+    { name: 'right', x: '100%', y: '50%' },
+    { name: 'top', x: '50%', y: '0%' },
+    { name: 'bottom', x: '50%', y: '100%' },
+    { name: 'topleft', x: '0%', y: '0%' },
+    { name: 'topright', x: '100%', y: '0%' },
+    { name: 'bottomleft', x: '0%', y: '100%' },
+    { name: 'bottomright', x: '100%', y: '100%' }
+  ];
+
+  positions.forEach(pos => {
+    const c = document.createElement('div');
+    c.className = `connector ${pos.name}`;
+    c.style.left = pos.x;
+    c.style.top = pos.y;
+    c.title = 'Connector';
+    el.appendChild(c);
+    c.addEventListener('pointerdown', (e) => { e.stopPropagation(); startConnectorDrag(el, e); });
+  });
+}
+
+function findByEl(el){ return elements.find(x=>x.id===el.dataset.id); }
+
+function selectElement(obj){ if(!obj) return; selected = obj; showProps(obj); document.querySelectorAll('.element').forEach(el=>el.style.boxShadow=''); obj.el.style.boxShadow='0 10px 30px rgba(0,0,0,0.6), 0 0 0 3px rgba(41,182,246,0.06)'; }
+
+function showProps(obj){ document.getElementById('ptype').textContent = obj.type; document.getElementById('posX').value = Math.round(obj.x); document.getElementById('posY').value = Math.round(obj.y); document.getElementById('widthM').value = obj.w; document.getElementById('heightM').value = obj.h; document.getElementById('rot').value = Math.round(obj.rot);
+  document.getElementById('runwayProps').style.display = obj.type==='runway' ? 'block':'none';
+  document.getElementById('apronProps').style.display = obj.type==='apron' ? 'block':'none';
+  if (obj.type === 'apron') {
+    const apronNumberInput = document.getElementById('apronNumber');
+    if (apronNumberInput) apronNumberInput.value = obj.meta.apronNumber || '01';
+  }
+  document.getElementById('terminalProps').style.display = obj.type==='terminal' ? 'block':'none';
+}
+
+// props inputs
+['posX','posY','widthM','heightM','rot'].forEach(id=>{ const el = document.getElementById(id); el.addEventListener('input', ()=>{ if(!selected) return; const val = Number(el.value||0); if(id==='posX'){ selected.x=val; selected.el.style.left=val+'px'; } else if(id==='posY'){ selected.y=val; selected.el.style.top=val+'px'; } else if(id==='widthM'){ selected.w = val; selected.el.style.width = toPX(val)+'px'; } else if(id==='heightM'){ selected.h=val; selected.el.style.height = toPX(val)+'px'; } else if(id==='rot'){ selected.rot = ((val%360)+360)%360; selected.el.style.transform = `rotate(${selected.rot}deg)`; }
+  updateInner(selected.el,selected); updateConnectors(selected); renderLinks(); }); });
+
+document.getElementById('deleteBtn').addEventListener('click', ()=>{
+  if(!selected) return;
+  saveState();
+  selected.el.remove();
+  elements = elements.filter(e=>e.id!==selected.id);
+  selected=null;
+  clearProps();
+  renderLinks();
+});
+
+function clearProps(){ document.getElementById('ptype').textContent='None'; document.getElementById('posX').value=''; document.getElementById('posY').value=''; document.getElementById('widthM').value=''; document.getElementById('heightM').value=''; document.getElementById('rot').value=''; document.getElementById('runwayProps').style.display='none'; document.getElementById('apronProps').style.display='none'; document.getElementById('terminalProps').style.display='none'; }
+
+// connectors and links
+let draggingConnector=null;
+function startConnectorDrag(el,e){ e.preventDefault(); draggingConnector={fromEl:el, line: createSVGLine(0,0,0,0)}; window.addEventListener('pointermove', connectorMove); window.addEventListener('pointerup', connectorEnd); connectorMove(e); }
+function connectorMove(e){ if(!draggingConnector) return; const rect = canvas.getBoundingClientRect(); const x = e.clientX-rect.left, y = e.clientY-rect.top; const fromRect = draggingConnector.fromEl.getBoundingClientRect(); const flx = fromRect.left+fromRect.width/2 - rect.left; const fly = fromRect.top+fromRect.height/2 - rect.top; setLine(draggingConnector.line, flx,fly,x,y); }
+function connectorEnd(e){ if(!draggingConnector) return; const rect = canvas.getBoundingClientRect(); const x = e.clientX-rect.left, y = e.clientY-rect.top; // find target element under pointer
+  const target = elements.find(el=>{ const r=el.el.getBoundingClientRect(); return e.clientX>r.left && e.clientX<r.right && e.clientY>r.top && e.clientY<r.bottom; });
+  if(target && target.el !== draggingConnector.fromEl){ // attach link
+    const fromId = draggingConnector.fromEl.dataset.id; const toId = target.id; addLink(fromId,toId);
+  }
+  // remove temporary line
+  draggingConnector.line.remove(); draggingConnector=null; window.removeEventListener('pointermove', connectorMove); window.removeEventListener('pointerup', connectorEnd); renderLinks(); }
+
+let links = [];
+function addLink(a,b){ links.push({id:crypto.randomUUID(),a,b}); }
+function createSVGLine(x1,y1,x2,y2){ const l = document.createElementNS('http://www.w3.org/2000/svg','line'); l.setAttribute('stroke', 'rgba(41,182,246,0.9)'); l.setAttribute('stroke-width','3'); l.setAttribute('stroke-linecap','round'); linksSVG.appendChild(l); return l; }
+function setLine(l,x1,y1,x2,y2){ l.setAttribute('x1',x1); l.setAttribute('y1',y1); l.setAttribute('x2',x2); l.setAttribute('y2',y2); }
+function renderLinks(){ linksSVG.innerHTML=''; links.forEach(link=>{ const a = elements.find(e=>e.id===link.a); const b = elements.find(e=>e.id===link.b); if(!a||!b) return; const ar = a.el.getBoundingClientRect(); const br = b.el.getBoundingClientRect(); const canvasRect = canvas.getBoundingClientRect(); const ax = ar.left + ar.width/2 - canvasRect.left; const ay = ar.top + ar.height/2 - canvasRect.top; const bx = br.left + br.width/2 - canvasRect.left; const by = br.top + br.height/2 - canvasRect.top; const line = createSVGLine(ax,ay,bx,by); line.setAttribute('stroke','rgba(255,255,255,0.08)'); line.setAttribute('stroke-width','4'); const midX = (ax+bx)/2, midY=(ay+by)/2; const label = document.createElementNS('http://www.w3.org/2000/svg','text'); label.setAttribute('x', midX); label.setAttribute('y', midY-8); label.setAttribute('fill','rgba(255,255,255,0.6)'); label.setAttribute('font-size','12'); label.textContent = '';
+    linksSVG.appendChild(label);
+  });
+}
+// Apron number input (fixed)
+const apronNumberInput = document.getElementById('apronNumber');
+if (apronNumberInput) {
+  apronNumberInput.addEventListener('input', () => {
+    if (!selected || selected.type !== 'apron') return;
+    selected.meta.apronNumber = apronNumberInput.value || '01';
+    const label = selected.el.querySelector('.apron-label');
+    if (label) label.textContent = selected.meta.apronNumber;
+  });
+}
+
+// snapping logic: when element moved near connector of other, snap end to that position
+function snapToNearby(obj) {
+  const snapDistance = 25;
+  const connectorsA = obj.el.querySelectorAll('.connector');
+  if (!connectorsA.length) return;
+
+  for (const connA of connectorsA) {
+    const rectA = connA.getBoundingClientRect();
+    const centerA = { x: rectA.left + rectA.width / 2, y: rectA.top + rectA.height / 2 };
+
+    for (const other of elements) {
+      if (other.id === obj.id) continue;
+      const connectorsB = other.el.querySelectorAll('.connector');
+      for (const connB of connectorsB) {
+        const rectB = connB.getBoundingClientRect();
+        const centerB = { x: rectB.left + rectB.width / 2, y: rectB.top + rectB.height / 2 };
+        const dx = centerB.x - centerA.x;
+        const dy = centerB.y - centerA.y;
+        const dist = Math.hypot(dx, dy);
+        if (dist < snapDistance) {
+          // Move entire element so connectors align
+          obj.x += dx;
+          obj.y += dy;
+          obj.el.style.left = obj.x + 'px';
+          obj.el.style.top = obj.y + 'px';
+          updateConnectors(obj);
+          renderLinks();
+          return;
+        }
+      }
+    }
+  }
+}
+
+// utilities
+function findElementById(id){ return elements.find(e=>e.id===id); }
+
+// UI buttons
+document.getElementById('addRunway').addEventListener('click', ()=>createElement('runway',100,80,30,1200));
+document.getElementById('addTaxi').addEventListener('click', ()=>createElement('taxiway',220,220,20,200));
+document.getElementById('addApron').addEventListener('click', ()=>createElement('apron',400,200,200,160));
+document.getElementById('addTerminal').addEventListener('click', ()=>createElement('terminal',120,400,300,80));
+
+// Undo functionality
+function saveState() {
+  // Deep copy elements and links, but only serializable properties
+  const elCopy = elements.map(e => ({
+    id: e.id,
+    type: e.type,
+    x: e.x,
+    y: e.y,
+    w: e.w,
+    h: e.h,
+    rot: e.rot,
+    meta: JSON.parse(JSON.stringify(e.meta || {}))
+  }));
+  const linksCopy = links.map(l => ({id: l.id, a: l.a, b: l.b}));
+  history.push(JSON.stringify({elements: elCopy, links: linksCopy}));
+  if (history.length > 50) history = history.slice(-50);
+}
+
+function undo() {
+  if (history.length < 2) return; // nothing to undo (current + prev)
+  history.pop(); // Remove current state
+  const prev = history[history.length - 1];
+  if (!prev) return;
+  const state = JSON.parse(prev);
+  // Remove all DOM elements
+  elements.forEach(e => { if (e.el && e.el.parentNode) e.el.parentNode.removeChild(e.el); });
+  elements = [];
+  links = [];
+  selected = null;
+  linksSVG.innerHTML = '';
+  clearProps();
+  // Restore elements
+  state.elements.forEach(d => {
+    const el = document.createElement('div');
+    el.className = 'element '+d.type;
+    el.dataset.type = d.type;
+    el.style.left = d.x+'px';
+    el.style.top = d.y+'px';
+    el.style.width = toPX(d.w)+'px';
+    el.style.height = toPX(d.h)+'px';
+    el.style.transformOrigin='50% 50%';
+    el.style.zIndex = ++zIndexCounter;
+    el.style.transform = `rotate(${d.rot||0}deg)`;
+    el.innerHTML = renderInner(d.type, d.w, d.h);
+    canvasInner.appendChild(el);
+    addHandles(el);
+    const obj = {id:d.id,type:d.type,x:d.x,y:d.y,w:d.w,h:d.h,rot:d.rot||0,el,connectors:[],meta:d.meta||{}};
+    el.dataset.id = obj.id;
+    elements.push(obj);
+    updateConnectors(obj);
+    updateInner(el,obj);
+    if (obj.type === 'apron') {
+      const label = el.querySelector('.apron-label');
+      if (label) label.textContent = obj.meta.apronNumber || '01';
+    }
+  });
+  // Restore links
+  links = state.links.map(l=>({id:l.id,a:l.a,b:l.b}));
+  renderLinks();
+}
+
+document.getElementById('undo').addEventListener('click', undo);
+
+document.getElementById('reset').addEventListener('click', ()=>{
+  if(confirm('Are you sure you want to reset the entire layout?')){
+    saveState();
+    elements.forEach(e=>e.el.remove());
+    elements=[];
+    links=[];
+    selected=null;
+    linksSVG.innerHTML='';
+    clearProps();
+  }
+});
+
+// selection by click
+canvas.addEventListener('pointerdown',(e)=>{ if(e.target===canvas || e.target.classList.contains('grid')){ selected=null; clearProps(); document.querySelectorAll('.element').forEach(el=>el.style.boxShadow=''); } else { let el = e.target; while(el && !el.classList.contains('element')) el=el.parentElement; if(el) selectElement(findByEl(el)); } });
+
+// simple persistence (localStorage)
+window.addEventListener('beforeunload', ()=>{ try{ const serial = elements.map(e=>({id:e.id,type:e.type,x:e.x,y:e.y,w:e.w,h:e.h,rot:e.rot})); localStorage.setItem('airportBuilder', JSON.stringify(serial)); }catch{} });
+window.addEventListener('load', ()=>{ const data = JSON.parse(localStorage.getItem('airportBuilder')||'[]'); if(data.length){ data.forEach(d=>{ const el = createElement(d.type,d.x,d.y,d.w,d.h); el.rot = d.rot||0; el.el.style.transform = `rotate(${el.rot}deg)`; updateInner(el.el,el); }); renderLinks(); }});
+
+// little helper: update props panel values
+function updatePropsPanel(){ if(!selected) return; document.getElementById('posX').value = Math.round(selected.x); document.getElementById('posY').value = Math.round(selected.y); document.getElementById('widthM').value = selected.w; document.getElementById('heightM').value = selected.h; document.getElementById('rot').value = Math.round(selected.rot); }
+
+// give initial sample
+saveState();
+createElement('runway',80,60,60,3633);
+createElement('taxiway',-4,686,60,700);
+createElement('apron',400,320,220,120);
+createElement('terminal',520,80,360,110);
+
+// Canvas panning and zooming
+canvas.addEventListener('pointerdown', (e) => {
+  if (e.target.id === 'canvas' || e.target.classList.contains('grid')) {
+    isPanning = true;
+    lastPan = { x: e.clientX, y: e.clientY };
+    canvas.style.cursor = 'grabbing';
+  }
+});
+
+window.addEventListener('pointermove', (e) => {
+  if (!isPanning) return;
+  const dx = e.clientX - lastPan.x;
+  const dy = e.clientY - lastPan.y;
+  lastPan = { x: e.clientX, y: e.clientY };
+  canvasOffset.x += dx;
+  canvasOffset.y += dy;
+  updateCanvasTransform();
+});
+
+window.addEventListener('pointerup', () => {
+  isPanning = false;
+  canvas.style.cursor = 'default';
+});
+
+function setScale(scale) {
+  canvasScale = Math.min(Math.max(0.3, scale), 3);
+  updateCanvasTransform();
+}
+
+canvas.addEventListener('wheel', (e) => {
+  e.preventDefault();
+  const delta = e.deltaY < 0 ? 1.1 : 0.9;
+  setScale(canvasScale * delta);
+}, { passive: false });
+
+// Pinch zoom (mobile)
+let pinchDist = 0;
+canvas.addEventListener('touchstart', (e) => {
+  if (e.touches.length === 2) {
+    pinchDist = Math.hypot(
+      e.touches[0].clientX - e.touches[1].clientX,
+      e.touches[0].clientY - e.touches[1].clientY
+    );
+  }
+}, { passive: false });
+
+canvas.addEventListener('touchmove', (e) => {
+  if (e.touches.length === 2) {
+    e.preventDefault();
+    const newDist = Math.hypot(
+      e.touches[0].clientX - e.touches[1].clientX,
+      e.touches[0].clientY - e.touches[1].clientY
+    );
+    const scaleFactor = newDist / pinchDist;
+    setScale(canvasScale * scaleFactor);
+    pinchDist = newDist;
+  }
+}, { passive: false });
+
+updateCanvasTransform();
+</script>
+</body>
+</html>
