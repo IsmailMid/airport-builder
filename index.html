@@ -1,105 +1,105 @@
 <!DOCTYPE html>
 <html lang="en">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <link rel="icon" type="image/svg" href="Assets/icon.svg" />
-  <title>Airport Builder</title>
-  <style>
-    :root {
-      --bg: #0b1220;
-      --accent: #29b6f6;
-      --text: #e6eef6;
-      --panel: #111a2b;
-    }
-
-    * { box-sizing: border-box; }
-
-    body {
-      margin: 0;
-      font-family: "Inter", system-ui, sans-serif;
-      background-image: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)), url("Assets/IMG_3668.jpeg");
-      background-position: center;
-      background-repeat: no-repeat;
-      background-size: cover;
-      color: var(--text);
-      display: flex;
-      flex-direction: column;
-      min-height: 100vh;
-      align-items: center;
-      justify-content: center;
-      text-align: center;
-      overflow: hidden;
-    }
-
-    header {
-      font-size: 2.4rem;
-      font-weight: 700;
-      color: var(--accent);
-      margin-bottom: 0.5rem;
-    }
-
-    p {
-      font-size: 1.1rem;
-      color: #a7b5c7;
-      max-width: 600px;
-      margin: 0 auto 2rem;
-    }
-
-    .btn {
-      background: var(--accent);
-      color: white;
-      border: none;
-      border-radius: 10px;
-      font-size: 1.1rem;
-      padding: 0.8rem 1.6rem;
-      cursor: pointer;
-      box-shadow: 0 4px 20px rgba(41,182,246,0.25);
-      transition: all 0.25s ease;
-    }
-
-    .btn:hover {
-      transform: translateY(-3px);
-      box-shadow: 0 6px 30px rgba(41,182,246,0.4);
-    }
-
-    footer {
-      position: absolute;
-      bottom: 10px;
-      font-size: 0.9rem;
-      color: #7d8fa5;
-    }
-
-    .skyline {
-      position: absolute;
-      bottom: 0;
-      left: 0;
-      width: 100%;
-      height: 160px;
-      background: linear-gradient(to top, #0a101d, transparent);
-      overflow: hidden;
-    }
-  </style>
-</head>
-<body>
-  <header>Airport Builder</header>
-  <p>
-    Design, construct, and visualize your own airport with interactive runways, taxiways, terminals, and aprons.
-    Everything you need to bring your aviation imagination to life — right in your browser.
-  </p>
-  <button class="btn" onclick="window.location.href='v1_0_1.html'">Launch Builder ✈️</button>
-
-  <header style="margin-top: 100px;">Version 1.0.1</header>
-  <p><i>October 25, 2025</i></p>
-  <ul>
-    <li>Fixed runway numbers and parallel runway numbering</li>
-    <li>Changed taxiway block color to <b>yellow</b></li>
-    <li>Added apron/stand numberings</li>
-    <li>Reduced minimum width of an element to 60m</li>
-  </ul>
-
-  <footer>
-    &copy; 2025 Airport Builder Project — Created by IsmailMid
-  </footer>
-</body>
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" type="image/svg" href="Assets/icon.svg">
+    <title>Airport Builder — Block-based Interactive Editor</title>
+    <style>
+      body {
+        margin: 0;
+        height: 100vh;
+        overflow: hidden;
+        background-image: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)), url('Assets/IMG_3668.jpeg');
+        background-position: center;
+        background-repeat: no-repeat;
+        background-size: cover;
+        color: #fff;
+        font-family: system-ui, sans-serif;
+      }
+      header .header-contents {
+        text-align: center;
+        background-color: #33333380;
+        padding: 20px;
+      }
+      .header-logo img {
+        height: 100px;
+        float: left;
+        margin-right: 10px;
+        margin-top: 0;
+      }
+      .launch-builder-button {
+        display: inline-block;
+        width: 100%;
+        min-width: 120px;
+        height: 40px;
+        line-height: 40px;
+        text-decoration: none;
+        margin-top: 20px;
+        margin-bottom: 20px;
+        background-color: #008cff67;
+        color: #fff;
+        border: 2px solid #005f8c;
+        border-radius: 10px;
+        transition: background-color 0.5s ease-in-out;
+        text-align: center;
+        font-size: 1rem;
+        cursor: pointer;
+      }
+      .launch-builder-button:hover {
+        background-color: #008cff;
+        transition: background-color 0.5s ease-in-out;
+      }
+    </style>
+  </head>
+  
+  <body>
+    <header>
+      <div class="header-contents">
+        <div class="header-logo">
+          <img src="Assets/airport_builder_logo.png">
+        </div>
+        <h1>Airport Builder</h1>
+      </div>
+    </header>
+    <main> <!-- When adding a new webpage, this has to be the only thing to change -->
+      <div class="body-contents">
+        <p>Design, construct, and visualize your own airport with interactive runways, taxiways, terminals, and aprons. Everything you need to bring your aviation imagination to life — right in your browser.</p>
+        <a href="v1_0_2.html" class="launch-builder-button">Launch Builder</a>
+        <div class="latest">
+          <h1>Latest updates</h1>
+          <ul>
+            <li><b>Airport Builder now has a WhatsApp Channel!</b> <a href="https://whatsapp.com/channel/0029VbBqlrz0gcfM81M6f60C">Join here!</a></li>
+          </ul>
+        </div>
+        <div class="version-history">
+          <h1>Version History</h1>
+          <ul>
+            <li><b>Version 1.0.2</b> — November 11, 2025
+              <ul>
+                <li>Added an "Add Element" section and removed the original add elements from the ribbon and replaced them with "+Element"</li>
+                <li>Elements now spawn at the center of the display, so that you now don't have to look around for a new element</li>
+              </ul>
+            </li>
+            <li><b>Version 1.0.1</b> — October 25, 2025
+              <ul>
+                <li>Fixed runway numbering and parallel runway numbering</li>
+                <li>Changed taxiway block color to yellow</li>
+                <li>Added apron/stand numberings</li>
+                <li>Reduced minimum width of an element to 30m (except for terminal buildings)</li>
+              </ul>
+            </li>
+            <li><b>Version 1.0.0</b> — October 5, 2025
+              <ul>
+                <li>Initial release of Airport Builder with core features</li>
+              </ul>
+            </li>
+          </ul>
+        </div>
+      </div>
+    </main>
+    <footer>
+      <p style="text-align: center;">&copy; 2025 Airport Builder. <br> By Ismail Midhath</p>
+    </footer>
+  </body>
 </html>
