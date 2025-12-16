@@ -1,0 +1,1243 @@
+<!-- Version 1.1.1 -- To be announced -->
+
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<link rel="icon" type="image/svg" href="Assets/icon.svg" />
+<title>Airport Builder — Block-based Interactive Editor</title>
+<style>
+:root{--bg:#0b1220;--panel:#0f1724;--accent:#29b6f6;--muted:#95a5b3;--glass:rgba(255,255,255,0.04)}
+html,body{height:100%;margin:0;font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,'Helvetica Neue',Arial}
+body{background:linear-gradient(180deg,#07101a, #0b1220);color:#e6eef6;display:flex;flex-direction:column}
+.header{display:flex;gap:12px;align-items:center;padding:10px 14px;background:linear-gradient(180deg,rgba(255,255,255,0.02),transparent);box-shadow:0 1px 0 rgba(255,255,255,0.02)}
+.title{font-weight:700;margin-right:6px}
+.toolbar{display:flex;gap:8px;align-items:center}
+.btn{background:var(--panel);border:1px solid rgba(255,255,255,0.03);padding:8px 10px;border-radius:8px;color:var(--muted);cursor:pointer}
+.btn.active{border-color:var(--accent);color:var(--accent);box-shadow:0 4px 16px rgba(41,182,246,0.08)}
+.container{display:flex;flex:1;min-height:0}
+.side{width:320px;background:linear-gradient(180deg,rgba(255,255,255,0.02),transparent);padding:12px;box-sizing:border-box;border-left:1px solid rgba(255,255,255,0.03);overflow:auto}
+.canvas-wrap{flex:1;display:flex;flex-direction:column;padding:12px}
+#canvas{flex:1;border-radius:10px;background:linear-gradient(90deg, rgba(255,255,255,0.01), rgba(255,255,255,0.00));position:relative;overflow:hidden;border:1px solid rgba(255,255,255,0.03)}
+.grid{background-image:linear-gradient(to right, rgba(255,255,255,0.02) 1px, transparent 1px),linear-gradient(to bottom, rgba(255,255,255,0.02) 1px, transparent 1px);background-size:40px 40px,40px 40px;position:absolute;inset:0}
+#canvasInner {transform-origin: 0 0;position: absolute;inset: 0;will-change: transform;}
+.prop-row{display:flex;gap:8px;align-items:center;margin-bottom:8px}
+.label{color:var(--muted);font-size:13px;width:120px}
+.input,select{flex:1;padding:8px;border-radius:8px;border:1px solid rgba(255,255,255,0.03);background:var(--glass);color:inherit}
+.small{width:80px}
+.element{position:absolute;touch-action:none;user-select:none}
+.runway{background:#b0b0b0;border:2px solid rgba(255,255,255,0.06);box-shadow:0 6px 20px rgba(0,0,0,0.6)}
+.runway .markings{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);color:#fff;font-weight:700;letter-spacing:3px;text-align:center;text-shadow:0 2px 6px rgba(0,0,0,0.8)}
+.runway .length-tag{position:absolute;right:-10px;top:-20px;background:rgba(0,0,0,0.6);padding:4px 8px;border-radius:6px;font-size:12px}
+.taxiway{background:#ffff00;border:2px solid rgba(255,255,255,0.03)}
+.apron{background:#ff0000;border:2px dashed rgba(255,255,255,0.035)}
+.apron-label{pointer-events: none;}
+.terminal{background:#ffffff;border:2px solid rgba(255,255,255,0.03)}
+.hangar{background:#d0e7ff;border:2px solid rgba(255,255,255,0.03)}
+.hangar-label{pointer-events:none;position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);font-weight:700;color:#000;font-size:13px}
+.reference{background-size:contain;background-repeat:no-repeat;background-position:center;border:1px solid rgba(255,255,255,0.03)}
+.handle{position:absolute;width:12px;height:12px;border-radius:3px;background:var(--panel);border:2px solid rgba(255,255,255,0.04)}
+.handle.rotate{border-radius:50%;width:14px;height:14px}
+.connector{position:absolute;width:10px;height:10px;border-radius:50%;background:var(--accent);transform:translate(-50%,-50%);opacity:0.9}
+.jetbridge{position:absolute;height:8px;background:linear-gradient(90deg,#74e2ff,#29b6f6);border-radius:999px;box-shadow:0 3px 14px rgba(41,182,246,0.25);transform-origin:0 50%;pointer-events:none;z-index:1200;opacity:0.92}
+.jetbridge::after{content:'';position:absolute;right:-6px;top:50%;width:12px;height:12px;border-radius:50%;border:2px solid rgba(0,0,0,0.2);background:#e9f7ff;transform:translate(0,-50%);box-shadow:0 0 10px rgba(41,182,246,0.28)}
+#jetbridgeLayer{position:absolute;inset:0;pointer-events:none;z-index:1199}
+.anchor-marker{position:absolute;width:8px;height:8px;border-radius:50%;background:#29b6f6;border:2px solid rgba(255,255,255,0.75);box-shadow:0 2px 6px rgba(0,0,0,0.4);pointer-events:none;z-index:1201;transform:translate(-50%,-50%)}
+.legend{font-size:13px;color:var(--muted);margin-bottom:6px}
+.footer{padding:8px 12px;color:var(--muted);font-size:13px}
+@media (max-width:880px){.side{width:100%;order:2}.canvas-wrap{order:1}.container{flex-direction:column}.header{flex-wrap:wrap}}
+</style>
+</head>
+<body>
+<div class="header">
+  <div class="title">Airport Builder</div>
+  <div class="toolbar" role="toolbar">
+    <button class="btn" id="addElement">+ Element</button>
+    <button class="btn" id="saveImportRibbonBtn">Save/Import</button>
+    <button class="btn" id="elementPropsBtn">Element Properties</button>
+    <button class="btn" id="undo">Undo</button>
+    <button class="btn" id="reset">Reset</button>
+  </div>
+</div>
+<div class="container">
+  <div class="canvas-wrap">
+    <div id="canvas">
+      <div id="canvasInner">
+        <div class="grid"></div>
+        <div id="jetbridgeLayer"></div>
+        <svg id="links" style="position:absolute;inset:0;pointer-events:none"></svg>
+      </div>
+    </div>
+    <div class="footer">Tip: Drag pieces on the canvas, use the rotate handle to set heading (runway numbers auto-update). Pinch/drag on mobile supported.</div>
+  </div>
+  <div class="side">
+    <div class="legend">Save/Import</div>
+    <div id="saveImportSection" style="display:flex;flex-direction:column;gap:6px;margin-bottom:12px;">
+      <button class="btn" id="saveJsonBtn">Save Airport as JSON</button>
+      <button class="btn" id="importJsonBtn">Import Airport</button>
+      <input id="importJsonInput" type="file" accept=".json,application/json" style="display:none" />
+    </div>
+    <div style="height:6px"></div>
+    <div class="legend">Add Element</div>
+    <div id="addElementsSection" style="display:flex;flex-direction:column;gap:6px;margin-bottom:12px;">
+      <button class="btn" id="addRunway">+ Runway</button>
+      <button class="btn" id="addTaxi">+ Taxiway</button>
+      <button class="btn" id="addApron">+ Apron/Stand</button>
+      <button class="btn" id="addTerminal">+ Terminal</button>
+      <button class="btn" id="addHangar">+ Hangar</button>
+      <button class="btn" id="addReference">+ Reference Image</button>
+      <input id="importRefInput" type="file" accept="image/*" style="display:none" />
+    </div>
+    <div class="legend">Selected element properties</div>
+    <div id="properties">
+      <div class="prop-row"><div class="label">Type</div><div id="ptype" class="input">None</div></div>
+      <div id="commonProps">
+        <div class="prop-row"><div class="label">X</div><input id="posX" class="input small" type="number"></div>
+        <div class="prop-row"><div class="label">Y</div><input id="posY" class="input small" type="number"></div>
+        <div class="prop-row"><div class="label">Width (m)</div><input id="widthM" class="input small" type="number"></div>
+        <div class="prop-row"><div class="label">Length (m)</div><input id="heightM" class="input small" type="number"></div>
+        <div class="prop-row"><div class="label">Rotation (deg)</div><input id="rot" class="input small" type="number"></div>
+      </div>
+      <div id="runwayProps" style="display:none">
+        <div class="prop-row"><div class="label">Parallel index</div><input id="parallelIndex" class="input small" type="number" min="1" max="3" value="1"></div>
+        <div class="prop-row"><div class="label">Surface</div>
+          <select id="surface" class="input">
+            <option>Asphalt</option>
+            <option>Concrete</option>
+            <option>Grass</option>
+          </select>
+        </div>
+      </div>
+      <div id="apronProps" style="display:none">
+        <div class="prop-row" id="apronNumberRow">
+          <div class="label">Apron number</div>
+          <input id="apronNumber" class="input small" type="text" maxlength="3" />
+        </div>
+        <div class="prop-row"><div class="label">Max aircraft</div>
+          <select id="maxAircraft" class="input">
+            <option>ICAO code A (Cessna 404/Piper PA-31)</option>
+            <option>ICAO code B (Bombardier CRJ200/DHC-6)</option>
+            <option>ICAO code C (Airbus A320/Boeing 737/Embraer E190)</option>
+            <option>ICAO code D (Airbus A310/Boeing 767)</option>
+            <option>ICAO code E (Airbus A330/Boeing 777/Boeing 787)</option>
+            <option>ICAO code F (Airbus A380/Boeing 747)</option>
+          </select>
+          <p><i>Reference: <a href="https://skybrary.aero/articles/icao-aerodrome-reference-code">SKYbrary</a></i></p>
+        </div>
+      </div>
+      <div id="terminalProps" style="display:none">
+        <div class="prop-row"><div class="label">Connects to:</div>
+          <select id="connectsTo" class="input">
+            <option>None</option>
+            <option>Main</option>
+            <option>Departure</option>
+            <option>Arrival</option>
+          </select></div>
+      </div>
+      <div id="hangarProps" style="display:none">
+        <div class="prop-row"><div class="label">Capacity (aircraft)</div><input id="hangarCapacity" class="input small" type="number" min="0" value="0"></div>
+        <div class="prop-row"><div class="label">Operator</div><input id="hangarOperator" class="input" type="text" placeholder="Airline/Owner"></div>
+      </div>
+      <div id="referenceProps" style="display:none">
+        <div class="prop-row"><div class="label">Opacity</div><input id="refOpacity" class="input small" type="range" min="40" max="100" value="60"></div>
+        <div class="prop-row"><div class="label">Area</div><div id="refArea" class="input">—</div></div>
+      </div>
+      <div style="margin-top:10px"><button class="btn" id="deleteBtn">Delete Selected</button></div>
+    </div>
+    <hr style="border:none;border-top:1px solid rgba(255,255,255,0.03);margin:12px 0">
+    <div class="legend">Element Clipboard</div>
+    <div style="display:flex;flex-direction:column;gap:6px;margin-bottom:12px;">
+      <button class="btn" id="copyBtn" style="display:none">Copy Element</button>
+      <button class="btn" id="pasteBtn">Paste Element</button>
+    </div>
+    <hr style="border:none;border-top:1px solid rgba(255,255,255,0.03);margin:12px 0">
+    <div class="legend">Legend & Controls</div>
+    <div style="font-size:13px;color:var(--muted);line-height:1.5">
+      - Runway numbers auto-compute from rotation heading. Opposite ends are both labeled. <br>
+      - Parallel runways get L/C/R depending on how many are aligned within 1 degree and their lateral order. <br>
+      - Lengths show in meters and feet (rounded). <br>
+      - Connectors snap when elements are moved close to each other.
+    </div>
+  </div>
+</div>
+<script>
+// Basic interactive airport builder. Not a CAD app. But it tries hard.
+const canvas = document.getElementById('canvas');
+const linksSVG = document.getElementById('links');
+const canvasInner = document.getElementById('canvasInner');
+const jetbridgeLayer = document.getElementById('jetbridgeLayer');
+let canvasScale = 1;
+let canvasOffset = { x: 0, y: 0 };
+let isPanning = false;
+let lastPan = { x: 0, y: 0 };
+const JETBRIDGE_RANGE_PX = 100; // tighter proximity (~500m) to auto-link stands to terminal
+const JETBRIDGE_SPREAD_PX = 14;
+
+function updateCanvasTransform() {
+  canvasInner.style.transform = `translate(${canvasOffset.x}px, ${canvasOffset.y}px) scale(${canvasScale})`;
+}
+let elements = [];
+let selected = null;
+let zIndexCounter = 2;
+let history = [];
+let elementClipboard = null;
+let jetbridges = [];
+const toPX = (m)=> Math.max(6, m/5); // simple m->px scale (1px = 5m), minimum 6px for 30m
+const fromPX = (px)=> Math.round(px*5);
+
+function createElement(type, x=null, y=null, w=50, h=600) {
+  saveState();
+  const rect = canvas.getBoundingClientRect();
+  // Compute center in canvasInner coordinates taking pan/zoom into account,
+  // then subtract half the element size (in canvasInner px) to position top-left.
+  const centerX = (rect.width / 2 - canvasOffset.x) / canvasScale - toPX(w) / 2;
+  const centerY = (rect.height / 2 - canvasOffset.y) / canvasScale - toPX(h) / 2;
+  x = x ?? centerX;
+  y = y ?? centerY;
+  saveState();
+  const el = document.createElement('div');
+  el.className = 'element '+type;
+  el.dataset.type = type;
+  el.style.left = x+'px';
+  el.style.top = y+'px';
+  el.style.width = toPX(w)+'px';
+  el.style.height = toPX(h)+'px';
+  el.style.transformOrigin='50% 50%';
+  // Keep reference images at the back (zIndex 0), others increase stacking counter
+  el.style.zIndex = (type === 'reference') ? 0 : ++zIndexCounter;
+  el.style.transform = 'rotate(0deg)';
+  el.innerHTML = renderInner(type, w, h);
+  canvasInner.appendChild(el);
+  addHandles(el);
+  const obj = {id:crypto.randomUUID(),type,x,y,w,h,rot:0,el,connectors:[],meta:{}};
+  if(type==='apron') obj.meta.apronNumber = '01';
+  if(type==='hangar') { obj.meta.capacity = 0; obj.meta.operator = ''; }
+  el.dataset.id = obj.id;
+  elements.push(obj);
+  updateConnectors(obj);
+  renderJetbridges();
+  selectElement(obj);
+  return obj;
+}
+
+function renderInner(type,w,h){
+  if(type==='runway'){
+    return `<div class="markings" style="font-size:calc(10px + ${Math.max(8,Math.min(36, h/40))}px)"><div class="numA">00</div><div style="font-size:10px;margin-top:6px" class="numB">00</div></div><div class="length-tag"></div>`;
+  }
+  if(type==='taxiway') return '';
+  if(type==='apron')
+    return `<div class="apron-label" style="position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);font-weight:700;color:#fff;text-shadow:0 1px 3px rgba(0,0,0,0.6);font-size:14px;">01</div>`;
+  if(type==='hangar') return `<div class="hangar-label">Hangar</div>`;
+  if(type==='terminal') return '';
+  return '';
+}
+
+function addHandles(el){
+  const id = el.dataset.id;
+  const type = el.dataset.type;
+  // resize handle bottom-right (always available)
+  const rb = document.createElement('div'); rb.className='handle'; rb.style.right='-8px'; rb.style.bottom='-8px'; el.appendChild(rb);
+
+  // For non-reference elements add rotate handle, draggable and connector
+  if (type !== 'reference') {
+    // rotate handle
+    const r = document.createElement('div'); r.className='handle rotate'; r.style.right='-18px'; r.style.top='-18px'; el.appendChild(r);
+    // connector point center-right
+    const conn = document.createElement('div'); conn.className='connector'; conn.style.right='0'; conn.style.top='50%'; conn.title='Connector'; el.appendChild(conn);
+
+    makeDraggable(el);
+    makeRotatable(r,el);
+    conn.addEventListener('pointerdown', (e)=>{e.stopPropagation(); startConnectorDrag(el,e)});
+  } else {
+    // reference image: always keep at back, non-draggable, only resizable (aspect-locked)
+    el.style.zIndex = 0;
+    // Allow selection by keeping pointer-events on, but handle canvas panning separately
+  }
+
+  makeResizable(rb,el);
+}
+
+function makeDraggable(el){
+  el.style.touchAction='none';
+  let startX=0,startY=0,ox=0,oy=0; let dragging=false;
+  el.addEventListener('pointerdown', (e)=>{
+    if(e.target.classList.contains('handle')||e.target.classList.contains('connector')) return;
+    dragging=true; el.setPointerCapture(e.pointerId);
+    startX=e.clientX; startY=e.clientY; ox=parseFloat(el.style.left); oy=parseFloat(el.style.top);
+    el.style.zIndex = ++zIndexCounter;
+    const obj = findByEl(el); selectElement(obj);
+  });
+  window.addEventListener('pointermove',(e)=>{ if(!dragging) return; const dx=e.clientX-startX, dy=e.clientY-startY; el.style.left = ox+dx+'px'; el.style.top = oy+dy+'px'; const obj=findByEl(el); obj.x=parseFloat(el.style.left); obj.y=parseFloat(el.style.top); updateConnectors(obj); renderLinks(); renderJetbridges(); updatePropsPanel(); snapToNearby(obj); });
+  window.addEventListener('pointerup',(e)=>{ if(!dragging) return; dragging=false; try{el.releasePointerCapture(e.pointerId)}catch{}; renderLinks(); renderJetbridges(); });
+}
+
+function makeResizable(handle,el){
+  let startW=0,startH=0, sx=0,sy=0; let resizing=false;
+  handle.addEventListener('pointerdown',(e)=>{e.stopPropagation(); resizing=true; el.setPointerCapture(e.pointerId); startW=el.offsetWidth; startH=el.offsetHeight; sx=e.clientX; sy=e.clientY; const obj=findByEl(el); selectElement(obj);});
+  window.addEventListener('pointermove',(e)=>{
+    if(!resizing) return;
+    const dx = e.clientX - sx, dy = e.clientY - sy;
+    // determine element-specific minimums (px)
+    const obj = findByEl(el);
+    // default legacy minimum in px (was 24px -> 120m). Keep unchanged for non-apron elements.
+    const legacyMinPx = 24;
+    // For aprons: min width 60m, min height 120m
+    const minWidthPx = (obj && obj.type === 'apron') ? toPX(60) : legacyMinPx;
+    const minHeightPx = (obj && obj.type === 'apron') ? toPX(120) : legacyMinPx;
+
+    if (obj && obj.type === 'reference') {
+      // Keep aspect ratio while resizing. Use width delta as primary.
+      const aspect = startH / startW || 1;
+      let newW = Math.max(minWidthPx, Math.round(startW + dx));
+      let newH = Math.round(newW * aspect);
+      // Enforce minHeightPx if needed
+      if (newH < minHeightPx) {
+        newH = minHeightPx;
+        newW = Math.max(minWidthPx, Math.round(newH / aspect));
+      }
+      el.style.width = newW + 'px';
+      el.style.height = newH + 'px';
+      obj.w = fromPX(newW);
+      obj.h = fromPX(newH);
+      updateInner(el,obj);
+      // reference has no connectors to update
+      renderLinks();
+      renderJetbridges();
+      updatePropsPanel();
+    } else {
+      el.style.width = Math.max(minWidthPx, startW + dx) + 'px';
+      el.style.height = Math.max(minHeightPx, startH + dy) + 'px';
+
+      if (obj) {
+        obj.w = fromPX(parseFloat(el.style.width));
+        obj.h = fromPX(parseFloat(el.style.height));
+        updateInner(el,obj);
+        updateConnectors(obj);
+        renderLinks();
+        renderJetbridges();
+        updatePropsPanel();
+      }
+    }
+  });
+  window.addEventListener('pointerup',(e)=>{ if(!resizing) return; resizing=false; try{handle.releasePointerCapture(e.pointerId)}catch{}; renderJetbridges(); });
+}
+
+function makeRotatable(handle,el){
+  let rotating=false, cx=0, cy=0, startAngle=0;
+  handle.addEventListener('pointerdown',(e)=>{e.stopPropagation(); rotating=true; el.setPointerCapture(e.pointerId);
+    const rect=el.getBoundingClientRect(); cx=rect.left+rect.width/2; cy=rect.top+rect.height/2;
+    startAngle = getRotation(el);
+    selectElement(findByEl(el));
+  });
+  window.addEventListener('pointermove',(e)=>{ if(!rotating) return; const angle = Math.atan2(e.clientY-cy,e.clientX-cx)*180/Math.PI; const deg = angle+90; el.style.transform = `rotate(${deg}deg)`; const obj=findByEl(el); obj.rot = ((deg%360)+360)%360; updateRunwayNumbers(obj); updateConnectors(obj); renderLinks(); renderJetbridges(); updatePropsPanel(); });
+  window.addEventListener('pointerup',(e)=>{ if(!rotating) return; rotating=false; try{handle.releasePointerCapture(e.pointerId)}catch{}; renderJetbridges(); });
+}
+
+function getRotation(el){
+  const st = window.getComputedStyle(el).transform;
+  if(st==='none') return 0;
+  const values = st.split('(')[1].split(')')[0].split(',');
+  const a = parseFloat(values[0]), b=parseFloat(values[1]);
+  const angle = Math.round(Math.atan2(b,a)*180/Math.PI);
+  return angle;
+}
+
+function updateInner(el,obj){
+  if(obj.type==='runway'){
+    // update markings font size and lengths
+    const mm = el.querySelector('.markings');
+    if(mm){
+      mm.style.fontSize = (10 + Math.max(8,Math.min(36, obj.h/40)))+'px';
+    }
+    const tag = el.querySelector('.length-tag'); if(tag) tag.textContent = formatLength(obj.h);
+    updateRunwayNumbers(obj);
+  }
+}
+
+function updateRunwayNumbers(obj){
+  if(obj.type!=='runway') return;
+  const el = obj.el;
+  const heading = Math.round(((obj.rot % 360)+360)%360);
+  const numA = runwayNumberFromHeading(heading);
+  const opp = (heading+180)%360; const numB = runwayNumberFromHeading(Math.round(opp));
+  // show numbers based on rotation direction: we'll put numA at top and numB at bottom
+  const numAel = el.querySelector('.numA'); const numBel = el.querySelector('.numB');
+  if(numAel) numAel.textContent = numA + parallelSuffix(obj, heading, true);
+  if(numBel) numBel.textContent = numB + parallelSuffix(obj, heading, false);
+  const tag = el.querySelector('.length-tag'); if(tag) tag.textContent = formatLength(obj.h);
+}
+
+function runwayNumberFromHeading(h){
+  // round to nearest 10, divide by 10. if 360->36, 0->36
+  let r = Math.round(h/10);
+  if(r===0) r=36; if(r>36) r = r%36; return String(r).padStart(2,'0');
+}
+
+function parallelSuffix(obj, heading, firstEnd) {
+  // Find runways with similar heading (within ±1.5 degrees)
+  const aligned = elements.filter(e => e.type === 'runway' && Math.abs(shortestAngleDiff(e.rot, heading)) < 1.5);
+  if (aligned.length <= 1) return '';
+
+  // Compute lateral order (perpendicular axis)
+  const rad = (heading + 90) * Math.PI / 180;
+  aligned.sort((a, b) => (Math.cos(rad) * (a.x - b.x) + Math.sin(rad) * (a.y - b.y)));
+
+  const idx = aligned.findIndex(x => x.id === obj.id);
+  const labels = aligned.length === 2 ? ['L', 'R'] :
+                 aligned.length === 3 ? ['L', 'C', 'R'] : [];
+
+  if (!labels.length) return '';
+
+  // For the opposite end, flip L/R; C stays the same
+  const label = labels[idx] || '';
+  if (!firstEnd) {
+    if (label === 'L') return 'R';
+    if (label === 'R') return 'L';
+  }
+  return label;
+}
+
+function shortestAngleDiff(a,b){ let diff = (a-b+540)%360-180; return diff; }
+
+function formatLength(m){ const mRounded = Math.round(m); const ft = Math.round(mRounded*3.28084); return `${mRounded.toLocaleString()}m / ${ft.toLocaleString()}ft`; }
+
+function apronCode(apron){
+  const raw = (apron.meta && apron.meta.maxAircraft) || '';
+  const match = raw.match(/code\s+([A-F])/i);
+  return match ? match[1].toUpperCase() : 'A';
+}
+
+function jetbridgeCountForApron(apron){
+  const code = apronCode(apron);
+  if (code === 'C') return 1;
+  if (code === 'D' || code === 'E') return 2;
+  if (code === 'F') return 3;
+  return 0;
+}
+
+function rectForElement(obj){
+  const w = toPX(obj.w);
+  const h = toPX(obj.h);
+  return {left: obj.x, top: obj.y, right: obj.x + w, bottom: obj.y + h, width: w, height: h};
+}
+
+function clamp(v,min,max){ return Math.max(min, Math.min(max, v)); }
+
+function closestPointOnRect(rect, point){
+  return {
+    x: Math.max(rect.left, Math.min(rect.right, point.x)),
+    y: Math.max(rect.top, Math.min(rect.bottom, point.y))
+  };
+}
+
+function rectDistance(a,b){
+  const dx = Math.max(a.left - b.right, b.left - a.right, 0);
+  const dy = Math.max(a.top - b.bottom, b.top - a.bottom, 0);
+  return Math.hypot(dx, dy);
+}
+
+function sideBetweenRotated(fromObj, toObj){
+  // Determine which local side of fromObj faces toObj, accounting for rotation
+  const w = toPX(fromObj.w), h = toPX(fromObj.h);
+  const cxA = fromObj.x + w/2, cyA = fromObj.y + h/2;
+  const cxB = toObj.x + toPX(toObj.w)/2, cyB = toObj.y + toPX(toObj.h)/2;
+  const dx = cxB - cxA, dy = cyB - cyA;
+  const rad = -((fromObj.rot||0) * Math.PI/180);
+  // rotate vector into local coordinates of fromObj
+  const lx = dx * Math.cos(rad) - dy * Math.sin(rad);
+  const ly = dx * Math.sin(rad) + dy * Math.cos(rad);
+  // Prefer vertical sides when mostly above/below in local space
+  if (Math.abs(ly) >= Math.abs(lx) * 0.75) return ly > 0 ? 'bottom' : 'top';
+  return lx > 0 ? 'right' : 'left';
+}
+
+function anchorOnRotatedRect(obj, towardPoint, alongOffset=0){
+  // Returns a point on the perimeter of obj's rotated rectangle pointing towards towardPoint
+  const w = toPX(obj.w), h = toPX(obj.h);
+  const halfW = w/2, halfH = h/2;
+  const cx = obj.x + halfW, cy = obj.y + halfH;
+  // local coordinates (centered)
+  const dx = towardPoint.x - cx, dy = towardPoint.y - cy;
+  const rad = -((obj.rot||0) * Math.PI/180);
+  const lx = dx * Math.cos(rad) - dy * Math.sin(rad);
+  const ly = dx * Math.sin(rad) + dy * Math.cos(rad);
+  // if direction is zero, return closest clamped center
+  const eps = 1e-6;
+  let dirx = lx, diry = ly;
+  if (Math.abs(dirx) < eps && Math.abs(diry) < eps) dirx = 1;
+  const mag = Math.hypot(dirx, diry) || 1;
+  dirx /= mag; diry /= mag;
+  const tX = Math.abs(dirx) < eps ? Infinity : halfW / Math.abs(dirx);
+  const tY = Math.abs(diry) < eps ? Infinity : halfH / Math.abs(diry);
+  const t = Math.min(tX, tY);
+  const hitLocalX = dirx * t;
+  const hitLocalY = diry * t;
+  // determine which side we hit and apply alongOffset along the tangent
+  let outX = hitLocalX, outY = hitLocalY;
+  if (t === tX) {
+    // hit vertical side; tangent is y axis
+    outY = clamp(outY + alongOffset, -halfH, halfH);
+  } else {
+    // hit horizontal side; tangent is x axis
+    outX = clamp(outX + alongOffset, -halfW, halfW);
+  }
+  // rotate back to world coords
+  const invRad = -rad;
+  const wx = outX * Math.cos(invRad) - outY * Math.sin(invRad) + cx;
+  const wy = outX * Math.sin(invRad) + outY * Math.cos(invRad) + cy;
+  return {x: wx, y: wy};
+}
+
+function symmetricOffset(idx){
+  if (idx === 0) return 0;
+  const step = Math.floor((idx + 1) / 2);
+  const sign = (idx % 2 === 1) ? 1 : -1;
+  return sign * step * JETBRIDGE_SPREAD_PX * 2;
+}
+
+function renderJetbridges(){
+  if (!jetbridgeLayer) return;
+  jetbridgeLayer.innerHTML = '';
+  const tempBridges = [];
+  // Only connect terminals to aprons—nothing else.
+  const terminals = elements.filter(e => e.type === 'terminal' && e.el && e.el.dataset.type === 'terminal');
+  const aprons = elements.filter(e => e.type === 'apron' && e.el && e.el.dataset.type === 'apron');
+  // Map aprons to their nearest terminal (within range)
+  const assignments = [];
+  aprons.forEach(apron => {
+    const bridgeCount = jetbridgeCountForApron(apron);
+    if (!bridgeCount) return;
+    const aRect = rectForElement(apron);
+    let nearest = null;
+    let bestDist = Infinity;
+    terminals.forEach(term => {
+      const dist = rectDistance(rectForElement(term), aRect);
+      if (dist <= JETBRIDGE_RANGE_PX && dist < bestDist) {
+        bestDist = dist;
+        nearest = term;
+      }
+    });
+    if (nearest) assignments.push({apron, terminal: nearest, aRect, bridgeCount});
+  });
+
+  // Group by terminal side for tidy spacing
+  const grouped = new Map();
+  assignments.forEach(({apron, terminal, aRect, bridgeCount}) => {
+    const tRect = rectForElement(terminal);
+    const side = sideBetweenRotated(terminal, apron);
+    const along = (side === 'left' || side === 'right') ? ((aRect.top + aRect.bottom) / 2) : ((aRect.left + aRect.right) / 2);
+    const key = terminal.id;
+    if (!grouped.has(key)) grouped.set(key, {terminal, sides:{left:[],right:[],top:[],bottom:[]}});
+    grouped.get(key).sides[side].push({apron, aRect, tRect, bridgeCount, side});
+  });
+
+  grouped.forEach(({terminal, sides}) => {
+    Object.entries(sides).forEach(([side, items]) => {
+      if (!items.length) return;
+      // Sort along the side axis to reduce crossing; assign slots per individual bridge for even spacing
+      items.sort((a,b)=>{
+        const ax = (side === 'left' || side === 'right') ? ((a.aRect.top + a.aRect.bottom)/2) : ((a.aRect.left + a.aRect.right)/2);
+        const bx = (side === 'left' || side === 'right') ? ((b.aRect.top + b.aRect.bottom)/2) : ((b.aRect.left + b.aRect.right)/2);
+        return ax - bx;
+      });
+      const totalBridges = items.reduce((sum,it)=> sum + it.bridgeCount, 0);
+      const tRect = rectForElement(terminal);
+      const w = toPX(terminal.w), h = toPX(terminal.h);
+      const halfW = w / 2, halfH = h / 2;
+      const cx = terminal.x + halfW, cy = terminal.y + halfH;
+      const rad = -((terminal.rot||0) * Math.PI/180);
+      // For the side extent (in rotated local space), compute the tangent axis range
+      const sideLength = (side === 'left' || side === 'right') ? h : w;
+      let slot = 1;
+      items.forEach((entry)=>{
+        const {apron, aRect, tRect, bridgeCount} = entry;
+        const apronSide = sideBetweenRotated(apron, terminal);
+        for (let i = 0; i < bridgeCount; i++) {
+          // In local rotated space, position along the side
+          const step = sideLength / (totalBridges + 1);
+          const localAlongOffset = -sideLength/2 + step * slot;
+          slot++;
+          // Compute a point in the direction of the apron, using the along offset
+          const aCenter = {x: (aRect.left + aRect.right)/2, y: (aRect.top + aRect.bottom)/2};
+          const termAnchor = anchorOnRotatedRect(terminal, aCenter, localAlongOffset);
+          const apronAnchor = anchorOnRotatedRect(apron, termAnchor, 0);
+          const baseDx = apronAnchor.x - termAnchor.x;
+          const baseDy = apronAnchor.y - termAnchor.y;
+          const baseLen = Math.hypot(baseDx, baseDy) || 1;
+          const perp = {x: -baseDy / baseLen, y: baseDx / baseLen};
+          const offset = (bridgeCount === 1) ? 0 : (i - (bridgeCount - 1) / 2) * JETBRIDGE_SPREAD_PX;
+          const start = {x: termAnchor.x + perp.x * offset, y: termAnchor.y + perp.y * offset};
+          const end = {x: apronAnchor.x + perp.x * offset, y: apronAnchor.y + perp.y * offset};
+          // generate bridge id and record metadata
+          const bridgeId = crypto.randomUUID();
+          const bridgeObj = { id: bridgeId, start, end, termId: terminal.id, apronId: apron.id, termAnchor, apronAnchor };
+          // collect into temp list; render below
+          tempBridges.push(bridgeObj);
+          placeJetbridge(start, end, termAnchor, apronAnchor, bridgeId);
+        }
+      });
+    });
+  });
+  // persist computed jetbridges so they can be selected/edited
+  jetbridges = tempBridges.slice();
+}
+
+function placeJetbridge(start, end, termAnchor, apronAnchor){
+  if (!jetbridgeLayer) return;
+  const dx = end.x - start.x;
+  const dy = end.y - start.y;
+  const length = Math.max(16, Math.hypot(dx, dy));
+  const angle = Math.atan2(dy, dx) * 180 / Math.PI;
+  const jb = document.createElement('div');
+  jb.className = 'jetbridge';
+  jb.style.left = start.x + 'px';
+  jb.style.top = start.y + 'px';
+  jb.style.width = length + 'px';
+  jb.style.transform = `rotate(${angle}deg)`;
+  jetbridgeLayer.appendChild(jb);
+
+  // draw small anchor markers for clarity (non-interactive)
+  try {
+    if (termAnchor) {
+      const m1 = document.createElement('div');
+      m1.className = 'anchor-marker';
+      m1.style.left = termAnchor.x + 'px';
+      m1.style.top = termAnchor.y + 'px';
+      jetbridgeLayer.appendChild(m1);
+    }
+    if (apronAnchor) {
+      const m2 = document.createElement('div');
+      m2.className = 'anchor-marker';
+      m2.style.left = apronAnchor.x + 'px';
+      m2.style.top = apronAnchor.y + 'px';
+      jetbridgeLayer.appendChild(m2);
+    }
+  } catch (e) {}
+}
+
+function updateConnectors(obj) {
+  const el = obj.el;
+  const existing = el.querySelectorAll('.connector');
+  existing.forEach(c => c.remove());
+
+  const positions = [
+    { name: 'left', x: '0%', y: '50%' },
+    { name: 'right', x: '100%', y: '50%' },
+    { name: 'top', x: '50%', y: '0%' },
+    { name: 'bottom', x: '50%', y: '100%' },
+    { name: 'topleft', x: '0%', y: '0%' },
+    { name: 'topright', x: '100%', y: '0%' },
+    { name: 'bottomleft', x: '0%', y: '100%' },
+    { name: 'bottomright', x: '100%', y: '100%' }
+  ];
+
+  positions.forEach(pos => {
+    const c = document.createElement('div');
+    c.className = `connector ${pos.name}`;
+    c.style.left = pos.x;
+    c.style.top = pos.y;
+    c.title = 'Connector';
+    el.appendChild(c);
+    c.addEventListener('pointerdown', (e) => { e.stopPropagation(); startConnectorDrag(el, e); });
+  });
+}
+
+function findByEl(el){ return elements.find(x=>x.id===el.dataset.id); }
+
+function selectElement(obj){ 
+  if(!obj) return; 
+  selected = obj; 
+  showProps(obj); 
+  document.querySelectorAll('.element').forEach(el=>el.style.boxShadow=''); 
+  obj.el.style.boxShadow='0 10px 30px rgba(0,0,0,0.6), 0 0 0 3px rgba(41,182,246,0.06)';
+  document.getElementById('copyBtn').style.display = 'block';
+}
+
+function showProps(obj){ document.getElementById('ptype').textContent = obj.type; document.getElementById('posX').value = Math.round(obj.x); document.getElementById('posY').value = Math.round(obj.y); document.getElementById('widthM').value = obj.w; document.getElementById('heightM').value = obj.h; document.getElementById('rot').value = Math.round(obj.rot);
+  document.getElementById('runwayProps').style.display = obj.type==='runway' ? 'block':'none';
+  document.getElementById('apronProps').style.display = obj.type==='apron' ? 'block':'none';
+  document.getElementById('hangarProps').style.display = obj.type==='hangar' ? 'block':'none';
+  document.getElementById('referenceProps').style.display = obj.type==='reference' ? 'block':'none';
+  if (obj.type === 'apron') {
+    const apronNumberInput = document.getElementById('apronNumber');
+    if (apronNumberInput) apronNumberInput.value = obj.meta.apronNumber || '01';
+    const maxAircraftSelect = document.getElementById('maxAircraft');
+    if (maxAircraftSelect) maxAircraftSelect.value = obj.meta.maxAircraft || 'ICAO code A (Cessna 404/Piper PA-31)';
+  }
+  if (obj.type === 'hangar') {
+    const cap = document.getElementById('hangarCapacity');
+    const op = document.getElementById('hangarOperator');
+    if (cap) cap.value = obj.meta.capacity || 0;
+    if (op) op.value = obj.meta.operator || '';
+  }
+  if (obj.type === 'reference') {
+    const op = document.getElementById('refOpacity');
+    const areaEl = document.getElementById('refArea');
+    if (op) op.value = Math.round((obj.meta.opacity || 0.6) * 100);
+    if (areaEl) {
+      const w = Number(obj.w || 0);
+      const h = Number(obj.h || 0);
+      const areaM2 = Math.round(w * h);
+      const areaFt2 = Math.round(areaM2 * 10.76391041671);
+      areaEl.textContent = `${w}m × ${h}m = ${areaM2.toLocaleString()} m² / ${areaFt2.toLocaleString()} ft²`;
+    }
+  }
+  document.getElementById('terminalProps').style.display = obj.type==='terminal' ? 'block':'none';
+}
+
+  // Reference opacity handler
+  const refOpacityInput = document.getElementById('refOpacity');
+  const refAreaEl = document.getElementById('refArea');
+  if (refOpacityInput) {
+    refOpacityInput.addEventListener('input', () => {
+      if (!selected || selected.type !== 'reference') return;
+      const pct = Number(refOpacityInput.value || 60);
+      const op = Math.max(40, Math.min(100, pct)) / 100;
+      selected.meta.opacity = op;
+      selected.el.style.opacity = op;
+    });
+  }
+
+// props inputs
+['posX','posY','widthM','heightM','rot'].forEach(id=>{ const el = document.getElementById(id); el.addEventListener('input', ()=>{ if(!selected) return; const val = Number(el.value||0); if(id==='posX'){ selected.x=val; selected.el.style.left=val+'px'; } else if(id==='posY'){ selected.y=val; selected.el.style.top=val+'px'; } else if(id==='widthM'){ selected.w = val; selected.el.style.width = toPX(val)+'px'; } else if(id==='heightM'){ selected.h=val; selected.el.style.height = toPX(val)+'px'; } else if(id==='rot'){ selected.rot = ((val%360)+360)%360; selected.el.style.transform = `rotate(${selected.rot}deg)`; }
+  updateInner(selected.el,selected); updateConnectors(selected); renderLinks(); renderJetbridges(); }); });
+
+document.getElementById('deleteBtn').addEventListener('click', ()=>{
+  if(!selected) return;
+  saveState();
+  selected.el.remove();
+  elements = elements.filter(e=>e.id!==selected.id);
+  selected=null;
+  clearProps();
+  renderLinks();
+  renderJetbridges();
+});
+
+// Copy Element handler
+document.getElementById('copyBtn').addEventListener('click', ()=>{
+  if(!selected) return;
+  elementClipboard = JSON.parse(JSON.stringify({
+    type: selected.type,
+    w: selected.w,
+    h: selected.h,
+    rot: selected.rot,
+    meta: selected.meta || {}
+  }));
+});
+
+// Paste Element handler
+document.getElementById('pasteBtn').addEventListener('click', ()=>{
+  if(!elementClipboard) { alert('No element in clipboard. Copy an element first.'); return; }
+  const obj = createElement(elementClipboard.type, null, null, elementClipboard.w, elementClipboard.h);
+  obj.rot = elementClipboard.rot || 0;
+  obj.el.style.transform = `rotate(${obj.rot}deg)`;
+  obj.meta = JSON.parse(JSON.stringify(elementClipboard.meta || {}));
+  // Re-initialize element visuals with restored metadata
+  updateInner(obj.el, obj);
+  if (obj.type === 'apron') {
+    const label = obj.el.querySelector('.apron-label');
+    if (label) label.textContent = obj.meta.apronNumber || '01';
+  }
+  if (obj.type === 'hangar') {
+    const label = obj.el.querySelector('.hangar-label');
+    if (label) label.textContent = obj.meta.operator ? obj.meta.operator : (obj.meta.capacity ? `Cap:${obj.meta.capacity}` : 'Hangar');
+  }
+  if (obj.type === 'reference') {
+    if (obj.meta && obj.meta.imageData) {
+      obj.el.style.backgroundImage = `url(${obj.meta.imageData})`;
+    }
+    const op = (obj.meta && obj.meta.opacity) ? obj.meta.opacity : 0.6;
+    obj.meta.opacity = Math.max(0.4, op);
+    obj.el.style.opacity = obj.meta.opacity;
+    obj.el.style.zIndex = 0;
+  }
+  updateConnectors(obj);
+  renderLinks();
+  renderJetbridges();
+});
+
+function clearProps(){ document.getElementById('ptype').textContent='None'; document.getElementById('posX').value=''; document.getElementById('posY').value=''; document.getElementById('widthM').value=''; document.getElementById('heightM').value=''; document.getElementById('rot').value=''; document.getElementById('runwayProps').style.display='none'; document.getElementById('apronProps').style.display='none'; document.getElementById('terminalProps').style.display='none'; document.getElementById('hangarProps').style.display='none'; document.getElementById('referenceProps').style.display='none'; document.getElementById('copyBtn').style.display='none'; }
+
+// connectors and links
+let draggingConnector=null;
+function startConnectorDrag(el,e){ e.preventDefault(); draggingConnector={fromEl:el, line: createSVGLine(0,0,0,0)}; window.addEventListener('pointermove', connectorMove); window.addEventListener('pointerup', connectorEnd); connectorMove(e); }
+function connectorMove(e){ if(!draggingConnector) return; const rect = canvas.getBoundingClientRect(); const x = e.clientX-rect.left, y = e.clientY-rect.top; const fromRect = draggingConnector.fromEl.getBoundingClientRect(); const flx = fromRect.left+fromRect.width/2 - rect.left; const fly = fromRect.top+fromRect.height/2 - rect.top; setLine(draggingConnector.line, flx,fly,x,y); }
+function connectorEnd(e){ if(!draggingConnector) return; const rect = canvas.getBoundingClientRect(); const x = e.clientX-rect.left, y = e.clientY-rect.top; // find target element under pointer
+  const target = elements.find(el=>{ const r=el.el.getBoundingClientRect(); return e.clientX>r.left && e.clientX<r.right && e.clientY>r.top && e.clientY<r.bottom; });
+  if(target && target.el !== draggingConnector.fromEl){ // attach link
+    const fromId = draggingConnector.fromEl.dataset.id; const toId = target.id; addLink(fromId,toId);
+  }
+  // remove temporary line
+  draggingConnector.line.remove(); draggingConnector=null; window.removeEventListener('pointermove', connectorMove); window.removeEventListener('pointerup', connectorEnd); renderLinks(); renderJetbridges(); }
+
+let links = [];
+function addLink(a,b){ links.push({id:crypto.randomUUID(),a,b}); }
+function createSVGLine(x1,y1,x2,y2){ const l = document.createElementNS('http://www.w3.org/2000/svg','line'); l.setAttribute('stroke', 'rgba(41,182,246,0.9)'); l.setAttribute('stroke-width','3'); l.setAttribute('stroke-linecap','round'); linksSVG.appendChild(l); return l; }
+function setLine(l,x1,y1,x2,y2){ l.setAttribute('x1',x1); l.setAttribute('y1',y1); l.setAttribute('x2',x2); l.setAttribute('y2',y2); }
+function renderLinks(){ linksSVG.innerHTML=''; links.forEach(link=>{ const a = elements.find(e=>e.id===link.a); const b = elements.find(e=>e.id===link.b); if(!a||!b) return; const ar = a.el.getBoundingClientRect(); const br = b.el.getBoundingClientRect(); const canvasRect = canvas.getBoundingClientRect(); const ax = ar.left + ar.width/2 - canvasRect.left; const ay = ar.top + ar.height/2 - canvasRect.top; const bx = br.left + br.width/2 - canvasRect.left; const by = br.top + br.height/2 - canvasRect.top; const line = createSVGLine(ax,ay,bx,by); line.setAttribute('stroke','rgba(255,255,255,0.08)'); line.setAttribute('stroke-width','4'); const midX = (ax+bx)/2, midY=(ay+by)/2; const label = document.createElementNS('http://www.w3.org/2000/svg','text'); label.setAttribute('x', midX); label.setAttribute('y', midY-8); label.setAttribute('fill','rgba(255,255,255,0.6)'); label.setAttribute('font-size','12'); label.textContent = '';
+    linksSVG.appendChild(label);
+  });
+}
+// Apron number input (fixed)
+const apronNumberInput = document.getElementById('apronNumber');
+if (apronNumberInput) {
+  apronNumberInput.addEventListener('input', () => {
+    if (!selected || selected.type !== 'apron') return;
+    selected.meta.apronNumber = apronNumberInput.value || '01';
+    const label = selected.el.querySelector('.apron-label');
+    if (label) label.textContent = selected.meta.apronNumber;
+  });
+}
+
+// Apron max aircraft input
+const maxAircraftSelect = document.getElementById('maxAircraft');
+if (maxAircraftSelect) {
+  maxAircraftSelect.addEventListener('change', () => {
+    if (!selected || selected.type !== 'apron') return;
+    selected.meta.maxAircraft = maxAircraftSelect.value || 'ICAO code A (Cessna 404/Piper PA-31)';
+    renderJetbridges();
+  });
+}
+
+// Hangar inputs
+const hangarCapacityInput = document.getElementById('hangarCapacity');
+const hangarOperatorInput = document.getElementById('hangarOperator');
+if (hangarCapacityInput) {
+  hangarCapacityInput.addEventListener('input', () => {
+    if (!selected || selected.type !== 'hangar') return;
+    selected.meta.capacity = Number(hangarCapacityInput.value || 0);
+    const label = selected.el.querySelector('.hangar-label');
+    if (label) label.textContent = selected.meta.operator ? selected.meta.operator : (selected.meta.capacity ? `Cap:${selected.meta.capacity}` : 'Hangar');
+  });
+}
+if (hangarOperatorInput) {
+  hangarOperatorInput.addEventListener('input', () => {
+    if (!selected || selected.type !== 'hangar') return;
+    selected.meta.operator = hangarOperatorInput.value || '';
+    const label = selected.el.querySelector('.hangar-label');
+    if (label) label.textContent = selected.meta.operator ? selected.meta.operator : (selected.meta.capacity ? `Cap:${selected.meta.capacity}` : 'Hangar');
+  });
+}
+
+// snapping logic: when element moved near connector of other, snap end to that position
+function snapToNearby(obj) {
+  const snapDistance = 25;
+  const connectorsA = obj.el.querySelectorAll('.connector');
+  if (!connectorsA.length) return;
+
+  for (const connA of connectorsA) {
+    const rectA = connA.getBoundingClientRect();
+    const centerA = { x: rectA.left + rectA.width / 2, y: rectA.top + rectA.height / 2 };
+
+    for (const other of elements) {
+      if (other.id === obj.id) continue;
+      const connectorsB = other.el.querySelectorAll('.connector');
+      for (const connB of connectorsB) {
+        const rectB = connB.getBoundingClientRect();
+        const centerB = { x: rectB.left + rectB.width / 2, y: rectB.top + rectB.height / 2 };
+        const dx = centerB.x - centerA.x;
+        const dy = centerB.y - centerA.y;
+        const dist = Math.hypot(dx, dy);
+        if (dist < snapDistance) {
+          // Move entire element so connectors align
+          obj.x += dx;
+          obj.y += dy;
+          obj.el.style.left = obj.x + 'px';
+          obj.el.style.top = obj.y + 'px';
+          updateConnectors(obj);
+          renderLinks();
+          renderJetbridges();
+          return;
+        }
+      }
+    }
+  }
+}
+
+// utilities
+function findElementById(id){ return elements.find(e=>e.id===id); }
+
+// UI buttons: add elements at the user's current view center (pass null for x,y)
+document.getElementById('addRunway').addEventListener('click', ()=>createElement('runway', null, null, 30, 1200));
+document.getElementById('addTaxi').addEventListener('click', ()=>createElement('taxiway', null, null, 20, 200));
+document.getElementById('addApron').addEventListener('click', ()=>createElement('apron', null, null, 200, 160));
+document.getElementById('addTerminal').addEventListener('click', ()=>createElement('terminal', null, null, 300, 80));
+  document.getElementById('addHangar').addEventListener('click', ()=>createElement('hangar', null, null, 80, 60));
+document.getElementById('addReference').addEventListener('click', ()=>{ const inp = document.getElementById('importRefInput'); if(inp){ inp.value=''; inp.click(); } });
+const importRefInput = document.getElementById('importRefInput');
+if (importRefInput) {
+  importRefInput.addEventListener('change', (ev) => {
+    const file = ev.target.files && ev.target.files[0];
+    if (!file) return;
+    if (!file.type || !file.type.startsWith('image/')) { alert('Unsupported file type. Please select an image file.'); return; }
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const dataUrl = String(e.target.result);
+      const img = new Image();
+      img.onload = () => {
+        // choose a default physical width (meters) and scale height by image aspect ratio
+        const defaultW = 200;
+        const aspect = img.height / img.width || 1;
+        const defaultH = Math.max(1, Math.round(defaultW * aspect));
+        const obj = createElement('reference', null, null, defaultW, defaultH);
+        // set background image and meta
+        obj.el.style.backgroundImage = `url(${dataUrl})`;
+        obj.meta.imageData = dataUrl;
+        obj.meta.opacity = 0.6;
+        obj.el.style.opacity = obj.meta.opacity;
+        // ensure it stays at back
+        obj.el.style.zIndex = 0;
+        updatePropsPanel();
+      };
+      img.src = dataUrl;
+    };
+    reader.onerror = () => { alert('Failed to read image file.'); };
+    reader.readAsDataURL(file);
+  });
+}
+document.getElementById('addElement').addEventListener('click', () => {
+  const section = document.getElementById('addElementsSection');
+  if (section) section.scrollIntoView({ behavior: 'smooth' });
+});
+
+// Undo functionality
+function saveState() {
+  // Deep copy elements and links, but only serializable properties
+  const elCopy = elements.map(e => ({
+    id: e.id,
+    type: e.type,
+    x: e.x,
+    y: e.y,
+    w: e.w,
+    h: e.h,
+    rot: e.rot,
+    meta: JSON.parse(JSON.stringify(e.meta || {}))
+  }));
+  const linksCopy = links.map(l => ({id: l.id, a: l.a, b: l.b}));
+  history.push(JSON.stringify({elements: elCopy, links: linksCopy}));
+  if (history.length > 50) history = history.slice(-50);
+}
+
+function undo() {
+  if (history.length < 2) return; // nothing to undo (current + prev)
+  history.pop(); // Remove current state
+  const prev = history[history.length - 1];
+  if (!prev) return;
+  const state = JSON.parse(prev);
+  // Remove all DOM elements
+  elements.forEach(e => { if (e.el && e.el.parentNode) e.el.parentNode.removeChild(e.el); });
+  elements = [];
+  links = [];
+  selected = null;
+  linksSVG.innerHTML = '';
+  clearProps();
+  // Restore elements
+  state.elements.forEach(d => {
+    const el = document.createElement('div');
+    el.className = 'element '+d.type;
+    el.dataset.type = d.type;
+    el.style.left = d.x+'px';
+    el.style.top = d.y+'px';
+    el.style.width = toPX(d.w)+'px';
+    el.style.height = toPX(d.h)+'px';
+    el.style.transformOrigin='50% 50%';
+    el.style.zIndex = (d.type === 'reference') ? 0 : ++zIndexCounter;
+    el.style.transform = `rotate(${d.rot||0}deg)`;
+    el.innerHTML = renderInner(d.type, d.w, d.h);
+    canvasInner.appendChild(el);
+    addHandles(el);
+    const obj = {id:d.id,type:d.type,x:d.x,y:d.y,w:d.w,h:d.h,rot:d.rot||0,el,connectors:[],meta:d.meta||{}};
+    el.dataset.id = obj.id;
+    elements.push(obj);
+    updateConnectors(obj);
+    updateInner(el,obj);
+    if (obj.type === 'apron') {
+      const label = el.querySelector('.apron-label');
+      if (label) label.textContent = obj.meta.apronNumber || '01';
+    }
+    if (obj.type === 'hangar') {
+      const label = el.querySelector('.hangar-label');
+      if (label) label.textContent = obj.meta.operator ? obj.meta.operator : (obj.meta.capacity ? `Cap:${obj.meta.capacity}` : 'Hangar');
+    }
+    if (obj.type === 'reference') {
+      // restore image and opacity
+      if (obj.meta && obj.meta.imageData) {
+        obj.el.style.backgroundImage = `url(${obj.meta.imageData})`;
+      }
+      const op = (obj.meta && obj.meta.opacity) ? obj.meta.opacity : 0.6;
+      obj.meta.opacity = Math.max(0.4, op);
+      obj.el.style.opacity = obj.meta.opacity;
+      // ensure it stays at back
+      obj.el.style.zIndex = 0;
+    }
+  });
+  // Restore links
+  links = state.links.map(l=>({id:l.id,a:l.a,b:l.b}));
+  renderLinks();
+  renderJetbridges();
+}
+
+document.getElementById('undo').addEventListener('click', undo);
+
+document.getElementById('reset').addEventListener('click', ()=>{
+  if(confirm('Are you sure you want to reset the entire layout?')){
+    saveState();
+    elements.forEach(e=>e.el.remove());
+    elements=[];
+    links=[];
+    selected=null;
+    linksSVG.innerHTML='';
+    clearProps();
+    renderJetbridges();
+  }
+});
+
+// Save/Import UI wiring
+const saveImportRibbonBtn = document.getElementById('saveImportRibbonBtn');
+const saveJsonBtn = document.getElementById('saveJsonBtn');
+const importJsonBtn = document.getElementById('importJsonBtn');
+const importJsonInput = document.getElementById('importJsonInput');
+
+saveImportRibbonBtn.addEventListener('click', () => {
+  const sec = document.getElementById('saveImportSection');
+  if (sec) sec.scrollIntoView({ behavior: 'smooth' });
+});
+
+// Element Properties button wiring
+const elementPropsBtn = document.getElementById('elementPropsBtn');
+if (elementPropsBtn) {
+  elementPropsBtn.addEventListener('click', () => {
+    const props = document.getElementById('properties');
+    if (props) props.scrollIntoView({ behavior: 'smooth' });
+  });
+}
+
+// Helper: serialize current airport (elements + links)
+function serializeAirport() {
+  return JSON.stringify({
+    meta: { exportedAt: new Date().toISOString() },
+    elements: elements.map(e => ({ id: e.id, type: e.type, x: e.x, y: e.y, w: e.w, h: e.h, rot: e.rot, meta: e.meta || {} })),
+    links: links.map(l => ({ id: l.id, a: l.a, b: l.b }))
+  }, null, 2);
+}
+
+// Download file helper
+function downloadTextFile(filename, text) {
+  const blob = new Blob([text], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}
+
+saveJsonBtn.addEventListener('click', () => {
+  const name = prompt('Enter airport name (used for filename):');
+  const filename = (name && name.trim()) ? `${name.trim()}.json` : 'airport.json';
+  try {
+    const text = serializeAirport();
+    downloadTextFile(filename, text);
+  } catch (err) {
+    alert('Failed to save airport: ' + (err && err.message ? err.message : String(err)));
+  }
+});
+
+// Import flow: trigger file input
+importJsonBtn.addEventListener('click', () => {
+  importJsonInput.value = '';
+  importJsonInput.click();
+});
+
+importJsonInput.addEventListener('change', (ev) => {
+  const file = ev.target.files && ev.target.files[0];
+  if (!file) return;
+  // Validate file type by extension and MIME
+  const name = file.name || '';
+  const lower = name.toLowerCase();
+  const mime = file.type || '';
+  if (!lower.endsWith('.json') && !mime.includes('json')) {
+    alert('Unsupported file type. Please select a JSON file.');
+    return;
+  }
+
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    try {
+      const data = JSON.parse(String(e.target.result));
+      if (!data || !Array.isArray(data.elements)) {
+        alert('Invalid airport file: missing elements array.');
+        return;
+      }
+
+      // Replace current layout with imported one
+      saveState(); // allow undo
+      // remove existing elements
+      elements.forEach(el => { if (el.el && el.el.parentNode) el.el.parentNode.removeChild(el.el); });
+      elements = [];
+      links = [];
+      selected = null;
+      linksSVG.innerHTML = '';
+      clearProps();
+      renderJetbridges();
+
+      // create imported elements
+      (data.elements || []).forEach(d => {
+        const el = document.createElement('div');
+        el.className = 'element ' + d.type;
+        el.dataset.type = d.type;
+        el.style.left = (d.x || 0) + 'px';
+        el.style.top = (d.y || 0) + 'px';
+        el.style.width = toPX(d.w || 50) + 'px';
+        el.style.height = toPX(d.h || 50) + 'px';
+        el.style.transformOrigin = '50% 50%';
+        el.style.zIndex = (d.type === 'reference') ? 0 : ++zIndexCounter;
+        el.style.transform = `rotate(${d.rot||0}deg)`;
+        el.innerHTML = renderInner(d.type, d.w || 50, d.h || 50);
+        canvasInner.appendChild(el);
+        addHandles(el);
+        const obj = { id: d.id || crypto.randomUUID(), type: d.type, x: d.x || 0, y: d.y || 0, w: d.w || 50, h: d.h || 50, rot: d.rot || 0, el, connectors: [], meta: d.meta || {} };
+        el.dataset.id = obj.id;
+        elements.push(obj);
+        updateConnectors(obj);
+        updateInner(el, obj);
+        if (obj.type === 'apron') {
+          const label = el.querySelector('.apron-label');
+          if (label) label.textContent = obj.meta.apronNumber || '01';
+        }
+        if (obj.type === 'hangar') {
+          const label = el.querySelector('.hangar-label');
+          if (label) label.textContent = obj.meta.operator ? obj.meta.operator : (obj.meta.capacity ? `Cap:${obj.meta.capacity}` : 'Hangar');
+        }
+        if (obj.type === 'reference') {
+          if (obj.meta && obj.meta.imageData) obj.el.style.backgroundImage = `url(${obj.meta.imageData})`;
+          const op = (obj.meta && obj.meta.opacity) ? obj.meta.opacity : 0.6;
+          obj.meta.opacity = Math.max(0.4, op);
+          obj.el.style.opacity = obj.meta.opacity;
+          obj.el.style.zIndex = 0;
+        }
+      });
+
+      // restore links
+      (data.links || []).forEach(l => { links.push({ id: l.id || crypto.randomUUID(), a: l.a, b: l.b }); });
+      renderLinks();
+      renderJetbridges();
+      alert('Import successful.');
+    } catch (err) {
+      alert('Failed to import JSON: ' + (err && err.message ? err.message : String(err)));
+    }
+  };
+  reader.onerror = () => { alert('Failed to read file.'); };
+  reader.readAsText(file);
+});
+
+// selection by click
+canvas.addEventListener('pointerdown',(e)=>{ if(e.target===canvas || e.target.classList.contains('grid')){ selected=null; clearProps(); document.querySelectorAll('.element').forEach(el=>el.style.boxShadow=''); } else { let el = e.target; while(el && !el.classList.contains('element')) el=el.parentElement; if(el) selectElement(findByEl(el)); } });
+
+// simple persistence (localStorage)
+window.addEventListener('beforeunload', ()=>{ try{ const serial = elements.map(e=>({id:e.id,type:e.type,x:e.x,y:e.y,w:e.w,h:e.h,rot:e.rot,meta:e.meta||{}})); localStorage.setItem('airportBuilder', JSON.stringify(serial)); }catch{} });
+window.addEventListener('load', ()=>{
+  const data = JSON.parse(localStorage.getItem('airportBuilder')||'[]');
+  if (data.length) {
+    data.forEach(d=>{ const el = createElement(d.type,d.x,d.y,d.w,d.h); el.rot = d.rot||0; el.el.style.transform = `rotate(${el.rot}deg)`; el.meta = d.meta || {}; updateInner(el.el,el); if(d.type==='apron'){ const label = el.el.querySelector('.apron-label'); if (label) label.textContent = el.meta.apronNumber || '01'; } if(d.type==='hangar'){ const label = el.el.querySelector('.hangar-label'); if (label) label.textContent = el.meta.operator ? el.meta.operator : (el.meta.capacity ? `Cap:${el.meta.capacity}` : 'Hangar'); } if(d.type==='reference' && d.meta){if(d.meta.imageData) el.el.style.backgroundImage=`url(${d.meta.imageData})`;const op=(d.meta.opacity)?d.meta.opacity:0.6;el.meta.opacity=Math.max(0.4,op);el.el.style.opacity=op;}});
+    renderLinks();
+    renderJetbridges();
+  } else {
+    // Canvas is blank (no saved airport) — create initial sample
+    saveState();
+    createElement('runway',80,60,60,3633);
+    createElement('taxiway',-4,686,60,700);
+    createElement('apron',400,320,220,120);
+    createElement('terminal',520,80,360,110);
+    renderJetbridges();
+  }
+});
+
+// little helper: update props panel values
+function updatePropsPanel(){
+  if(!selected) return;
+  document.getElementById('posX').value = Math.round(selected.x);
+  document.getElementById('posY').value = Math.round(selected.y);
+  document.getElementById('widthM').value = selected.w;
+  document.getElementById('heightM').value = selected.h;
+  document.getElementById('rot').value = Math.round(selected.rot);
+  if (selected.type === 'reference') {
+    const areaEl = document.getElementById('refArea');
+    if (areaEl) {
+      const w = Number(selected.w || 0);
+      const h = Number(selected.h || 0);
+      const areaM2 = Math.round(w * h);
+      const areaFt2 = Math.round(areaM2 * 10.76391041671);
+      areaEl.textContent = `${w}m × ${h}m = ${areaM2.toLocaleString()} m² / ${areaFt2.toLocaleString()} ft²`;
+    }
+  }
+}
+
+// initial sample is created during load only when canvas is blank
+
+// Canvas panning and zooming
+canvas.addEventListener('pointerdown', (e) => {
+  if (e.target.id === 'canvas' || e.target.classList.contains('grid')) {
+    isPanning = true;
+    lastPan = { x: e.clientX, y: e.clientY };
+    canvas.style.cursor = 'grabbing';
+  }
+});
+
+window.addEventListener('pointermove', (e) => {
+  if (!isPanning) return;
+  const dx = e.clientX - lastPan.x;
+  const dy = e.clientY - lastPan.y;
+  lastPan = { x: e.clientX, y: e.clientY };
+  canvasOffset.x += dx;
+  canvasOffset.y += dy;
+  updateCanvasTransform();
+});
+
+window.addEventListener('pointerup', () => {
+  isPanning = false;
+  canvas.style.cursor = 'default';
+});
+
+function setScale(scale) {
+  canvasScale = Math.min(Math.max(0.3, scale), 3);
+  updateCanvasTransform();
+}
+
+canvas.addEventListener('wheel', (e) => {
+  e.preventDefault();
+  const delta = e.deltaY < 0 ? 1.1 : 0.9;
+  setScale(canvasScale * delta);
+}, { passive: false });
+
+// Pinch zoom (mobile)
+let pinchDist = 0;
+canvas.addEventListener('touchstart', (e) => {
+  if (e.touches.length === 2) {
+    pinchDist = Math.hypot(
+      e.touches[0].clientX - e.touches[1].clientX,
+      e.touches[0].clientY - e.touches[1].clientY
+    );
+  }
+}, { passive: false });
+
+canvas.addEventListener('touchmove', (e) => {
+  if (e.touches.length === 2) {
+    e.preventDefault();
+    const newDist = Math.hypot(
+      e.touches[0].clientX - e.touches[1].clientX,
+      e.touches[0].clientY - e.touches[1].clientY
+    );
+    const scaleFactor = newDist / pinchDist;
+    setScale(canvasScale * scaleFactor);
+    pinchDist = newDist;
+  }
+}, { passive: false });
+
+updateCanvasTransform();
+</script>
+</body>
+</html>
