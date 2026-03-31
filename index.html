@@ -6,20 +6,36 @@
     <link rel="icon" type="image/svg" href="Assets/icon.svg">
     <title>Airport Builder — Block-based Interactive Editor</title>
     <style>
+      @keyframes switchBackground {
+        0%, 25% { background-image: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)), url('Assets/IMG_3668.jpeg'); }
+        26%, 50% { background-image: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)), url('Assets/IMG_5456.jpeg'); }
+        51%, 75% { background-image: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)), url('Assets/IMG_5452.jpeg'); }
+        75%, 100% { background-image: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)), url('Assets/AUSTRIAN777.jpeg'); }
+      }
       body {
         margin: 0;
-        overflow: hidden;
-        background-image: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)), url('Assets/IMG_3668.jpeg');
         background-position: center;
         background-repeat: no-repeat;
         background-size: cover;
+        background-attachment: fixed;
         color: #fff;
         font-family: system-ui, sans-serif;
+        animation: switchBackground 12s ease-in-out 0.5s infinite;
+      }
+      header {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        z-index: 1000;
       }
       header .header-contents {
         text-align: center;
         background-color: #33333380;
         padding: 20px;
+      }
+      main {
+        margin-top: 200px;
       }
       .header-logo img {
         height: 100px;
@@ -62,7 +78,7 @@
         <a href="https://docs.google.com/forms/d/e/1FAIpQLSfWgTepMMVr6-5XxcNREiHAyeK7f0b3y5ib0hqTkt4BDY5uxw/viewform?usp=publish-editor" style="text-decoration: none; color: #fff;">Submit Your Airports</a>
       </div>
     </header>
-    <main> <!-- When adding a new webpage, this has to be the only thing to change -->
+    <main>
       <div class="body-contents">
         <p>Design, construct, and visualize your own airport with interactive runways, taxiways, terminals, and aprons. Everything you need to bring your aviation imagination to life — right in your browser.</p>
         <a href="v1_2.html" class="launch-builder-button">Launch Builder</a>
@@ -128,7 +144,7 @@
       </div>
     </main>
     <footer>
-      <p style="text-align: center;">&copy; 2025 Airport Builder. <br> By Ismail Midhath</p>
+      <p style="text-align: center;">&copy; 2026 Airport Builder. <br> By Ismail Midhath</p>
     </footer>
   </body>
 </html>
