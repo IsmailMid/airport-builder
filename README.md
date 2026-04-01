@@ -56,4 +56,15 @@ I'll go with a width of 80m and a length of 4,000m. It should end up like this:
 You should see something like this:
 <img width="1469" height="796" alt="Screenshot 2026-03-31 at 12 08 52" src="https://github.com/user-attachments/assets/53783dbe-8466-4527-9469-52d62a8a2341" />
 
+**Step 4:** Click on your taxiway, then **drag it** to move it around your screen, or use the X and Y positions in the **Element Properties** for more precise positions.
+I will move my taxiway to *X: 99, Y: 772*. It should look like this:
+<img width="1469" height="796" alt="Screenshot 2026-04-01 at 09 58 46" src="https://github.com/user-attachments/assets/da4731ef-3b27-40c5-834e-4deba5bbbf2e" />
+
+**Step 5:** Resize your taxiway. I'd recommend it to be as long as the runway itself, which is 4,000m, and 60m wide.
+It won't end up at the position you moved it to, hence in that case drag it to your consent.
+It should now look like this:
+<img width="1469" height="796" alt="Screenshot 2026-04-01 at 10 03 46" src="https://github.com/user-attachments/assets/0763a49a-53ba-4704-ad1d-61fa09d69355" />
+
+Great, you made your first taxiway, but how do you connect the taxiway to the runway?
+
 ***NOTE:** this README is still a work-in-progress. I just saved this because I didn't want to lose my progress along the way.*
