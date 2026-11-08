@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="icon" type="image/svg" href="Assets/icon.svg">
+    <title>Featured Airports | Airport Builder</title>
+    <style>
+      @keyframes switchBackground {
+        0%, 25% { background-image: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)), url('Assets/IMG_3668.jpeg'); }
+        26%, 50% { background-image: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)), url('Assets/IMG_5456.jpeg'); }
+        51%, 75% { background-image: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)), url('Assets/IMG_5452.jpeg'); }
+        75%, 100% { background-image: linear-gradient(rgba(0, 0, 0, 0.5), rgba(0, 0, 0, 0.5)), url('Assets/AUSTRIAN777.jpeg'); }
+      }
+      body {
+        margin: 0;
+        background-position: center;
+        background-repeat: no-repeat;
+        background-size: cover;
+        background-attachment: fixed;
+        color: #fff;
+        font-family: system-ui, sans-serif;
+        animation: switchBackground 12s ease-in-out 0.5s infinite;
+      }
+      header {
+        position: fixed;
+        top: 0;
+        left: 0;
+        right: 0;
+        z-index: 1000;
+      }
+      header .header-contents {
+        text-align: center;
+        background-color: #33333380;
+        padding: 20px;
+      }
+      main {
+        margin-top: 200px;
+      }
+      .header-logo img {
+        height: 100px;
+        float: left;
+        margin-right: 10px;
+        margin-top: 0;
+      }
+      .launch-builder-button {
+        display: inline-block;
+        width: 100%;
+        min-width: 120px;
+        height: 40px;
+        line-height: 40px;
+        text-decoration: none;
+        margin-top: 20px;
+        margin-bottom: 20px;
+        background-color: #008cff67;
+        color: #fff;
+        border: 2px solid #005f8c;
+        border-radius: 10px;
+        transition: background-color 0.5s ease-in-out;
+        text-align: center;
+        font-size: 1rem;
+        cursor: pointer;
+      }
+      .launch-builder-button:hover {
+        background-color: #008cff;
+        transition: background-color 0.5s ease-in-out;
+      }
+      .not-found {
+        text-align: center;
+      }
+    </style>
+  </head>
+  
+  <body>
+    <header>
+      <div class="header-contents">
+        <div class="header-logo">
+          <a href="index.html" style="text-decoration: none; color: #ffffff;"><img src="Assets/airport_builder_logo.png"></a>
+        </div>
+        <h1>Featured Airports</h1>
+        <a href="https://docs.google.com/forms/d/e/1FAIpQLSfWgTepMMVr6-5XxcNREiHAyeK7f0b3y5ib0hqTkt4BDY5uxw/viewform?usp=publish-editor" target="_blank" style="text-decoration: none; color: #fff;">Submit Your Airports</a>
+      </div>
+    </header>
+    <main>
+      <div class="body-contents">
+        <p>Design, construct, and visualize your own airport with interactive runways, taxiways, terminals, and aprons. Everything you need to bring your aviation imagination to life — right in your browser.</p>
+        <a href="v1_3.html" class="launch-builder-button">Launch Builder</a>
+        <div class="ap-of-the-week"></div>
+        <div class="featured">
+          <section id="not-found" class="not-found">
+            <h2>There aren't any uploaded airports at the moment.</h2>
+            <p><a href="https://docs.google.com/forms/d/e/1FAIpQLSfWgTepMMVr6-5XxcNREiHAyeK7f0b3y5ib0hqTkt4BDY5uxw/viewform?usp=publish-editor" target="_blank" style="text-decoration: none; color: #00ff95;">Be the first one to do so!</a></p>
+          </section>
+          <script>
+            let notFoundError = document.getElementById("not-found");
+            notFoundError.hidden = false;
+          </script>
+        </div>
+      </div>
+    </main>
+    <footer>
+      <p style="text-align: center;">&copy; 2026 Airport Builder. <br> By Ismail Midhath</p>
+    </footer>
+  </body>
+</html>
